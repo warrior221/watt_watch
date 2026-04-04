@@ -24,6 +24,7 @@ function App() {
   const [detectionFull, setDetectionFull] = useState({});
   const [hasLaunched, setHasLaunched] = useState(false);
   const [session, setSession] = useState(null);
+  const [focussedNode, setFocussedNode] = useState(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -34,6 +35,9 @@ function App() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      if (!session) {
+        setHasLaunched(false);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -72,6 +76,7 @@ function App() {
   const handleCityChange = async (newCity) => {
     if (newCity !== currentCity) {
       setCurrentCity(newCity);
+      setFocussedNode(null);
       // Data will be loaded via useEffect dependency change
     }
   };
@@ -96,6 +101,11 @@ function App() {
       setLoading(false);
     }
   };
+
+  const handleLocateNode = useCallback((nodeId) => {
+    setFocussedNode(nodeId);
+    setCurrentTab("grid");
+  }, []);
 
   const handleUpload = async (e) => {
     const file = e.target.files[0];
@@ -169,6 +179,7 @@ function App() {
               theftNodes={alerts} 
               suspiciousTfs={suspiciousTfs}
               currentCity={currentCity}
+              focussedNodeId={focussedNode}
             />
             
             {/* Buttons and Actions Overlay */}
@@ -203,6 +214,7 @@ function App() {
               history={[]}
               theftNodes={alerts}
               suspiciousTfs={suspiciousTfs}
+              onLocate={handleLocateNode}
             />
           </>
         ) : currentTab === "dashboard" ? (
@@ -214,6 +226,7 @@ function App() {
         ) : (
           <AnalyticsView 
             detectionData={detectionFull}
+            onLocateNode={handleLocateNode}
           />
         )}
       </main>

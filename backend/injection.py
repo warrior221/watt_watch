@@ -17,11 +17,13 @@ def recompute_loads():
     # Recompute Transformer loads from child poles
     for t in nodes_by_type.get("transformer", []):
         child_poles = by_parent.get(t["id"], [])
+        t["expected_load"] = round(sum(p.get("expected_load", 0) for p in child_poles if p["type"].lower() == "pole"), 2)
         t["actual_load"] = round(sum(p.get("actual_load", 0) for p in child_poles if p["type"].lower() == "pole"), 2)
         
     # Recompute PowerPlant loads from child transformers
     for pp in nodes_by_type.get("powerplant", []) + nodes_by_type.get("power_plant", []):
         child_tfs = by_parent.get(pp["id"], [])
+        pp["expected_load"] = round(sum(t.get("expected_load", 0) for t in child_tfs if t["type"].lower() == "transformer"), 2)
         pp["actual_load"] = round(sum(t.get("actual_load", 0) for t in child_tfs if t["type"].lower() == "transformer"), 2)
 
 def inject_theft(pole_ids):

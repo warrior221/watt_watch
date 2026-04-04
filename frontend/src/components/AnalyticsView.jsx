@@ -4,15 +4,15 @@ import {
   PieChart, Pie, Cell
 } from 'recharts';
 
-const AnalyticsView = ({ detectionData }) => {
+const AnalyticsView = ({ detectionData, onLocateNode }) => {
   const { theft_nodes = [], summary = {} } = detectionData || {};
   
-  // STEP 2: Group data by area for Bar Chart
+  // Group data by area for Bar Chart
   const areaData = useMemo(() => {
     const areas = {};
     theft_nodes.forEach(node => {
       if (!areas[node.area]) {
-        areas[node.area] = { area: node.area, expected_load: 0, actual_load: 0, mismatch: 0 };
+        areas[node.area] = { area: node.area, expected_load: 0, actual_load: 0, mismatch: 0, representativeNode: node.id };
       }
       areas[node.area].expected_load += node.expected_load;
       areas[node.area].actual_load += node.actual_load;
@@ -21,7 +21,7 @@ const AnalyticsView = ({ detectionData }) => {
     return Object.values(areas).sort((a, b) => b.mismatch - a.mismatch);
   }, [theft_nodes]);
 
-  // STEP 3: Pie Chart Data (Normal vs Loss)
+  // Pie Chart Data (Normal vs Loss)
   const pieData = [
     { name: 'Normal', value: summary.total_expected_load || 0 },
     { name: 'Loss', value: summary.total_loss || 0 }
@@ -29,12 +29,12 @@ const AnalyticsView = ({ detectionData }) => {
 
   const COLORS = ['#3b82f6', '#f43f5e'];
 
-  // STEP 6: Severity Logic
+  // Severity Logic
   const lossPercent = summary.loss_percentage || 0;
   const severity = lossPercent < 5 ? 'Low' : lossPercent < 15 ? 'Medium' : 'High';
   const severityColor = severity === 'Low' ? '#22c55e' : severity === 'Medium' ? '#eab308' : '#f43f5e';
 
-  // STEP 5: Stats
+  // Stats
   const mostAffectedArea = areaData[0]?.area || 'N/A';
   const worstNode = [...theft_nodes].sort((a, b) => b.mismatch - a.mismatch)[0];
 
@@ -54,13 +54,13 @@ const AnalyticsView = ({ detectionData }) => {
         </div>
       </header>
 
-      {/* STEP 4: Stats Cards */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        <div className="glass-panel p-6 rounded-3xl border border-white/5 shadow-2xl flex flex-col justify-between hover:border-blue-500/30 transition-colors group">
+        <div className="glass-panel p-6 rounded-3xl border border-white/5 shadow-2xl flex flex-col justify-between hover:border-blue-500/30 transition-colors group cursor-default">
            <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest group-hover:text-blue-400 transition-colors">Total Grid Loss</p>
            <p className="text-3xl font-black data-font mt-4 text-white">{summary.total_loss?.toFixed(2) || 0} <span className="text-sm font-medium text-slate-500">kW</span></p>
         </div>
-        <div className="glass-panel p-6 rounded-3xl border border-white/5 shadow-2xl flex flex-col justify-between hover:border-red-500/30 transition-colors group">
+        <div className="glass-panel p-6 rounded-3xl border border-white/5 shadow-2xl flex flex-col justify-between hover:border-red-500/30 transition-colors group cursor-default">
            <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest group-hover:text-red-400 transition-colors">Loss Percentage</p>
            <p className="text-3xl font-black data-font mt-4 text-white">{lossPercent.toFixed(2)} %</p>
         </div>
@@ -68,14 +68,17 @@ const AnalyticsView = ({ detectionData }) => {
            <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest group-hover:text-amber-400 transition-colors">Anomaly Count</p>
            <p className="text-3xl font-black data-font mt-4 text-white">{theft_nodes.length}</p>
         </div>
-        <div className="glass-panel p-6 rounded-3xl border border-white/5 shadow-2xl flex flex-col justify-between group">
+        <div 
+          onClick={() => areaData[0]?.representativeNode && onLocateNode(areaData[0].representativeNode)}
+          className="glass-panel p-6 rounded-3xl border border-white/5 shadow-2xl flex flex-col justify-between group cursor-pointer hover:border-purple-400 transition-colors animate-pulse"
+        >
            <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest group-hover:text-purple-400 transition-colors">Most Affected Area</p>
            <p className="text-xl font-bold mt-4 text-white truncate uppercase">{mostAffectedArea}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        {/* STEP 2: Bar Chart */}
+        {/* Bar Chart */}
         <div className="glass-panel p-8 rounded-3xl border border-white/5 shadow-2xl">
            <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-8 flex items-center justify-between">
               Load Mismatch by Area
@@ -99,7 +102,7 @@ const AnalyticsView = ({ detectionData }) => {
            </div>
         </div>
 
-        {/* STEP 3: Pie Chart */}
+        {/* Pie Chart */}
         <div className="glass-panel p-8 rounded-3xl border border-white/5 shadow-2xl">
            <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-8 flex items-center justify-between">
               Infrastructure Integrity
@@ -132,16 +135,19 @@ const AnalyticsView = ({ detectionData }) => {
         </div>
       </div>
 
-      {/* STEP 7: Top Affected and Worst Node */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
          <div className="glass-panel p-8 rounded-3xl border border-white/5 shadow-2xl overflow-hidden">
             <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6">Critical Vulnerabilities</h3>
             <div className="space-y-4">
                {areaData.slice(0, 4).map((area, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                  <div 
+                    key={idx} 
+                    onClick={() => onLocateNode(area.representativeNode)}
+                    className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 cursor-pointer hover:bg-red-500/10 hover:border-red-500/30 transition-all group"
+                   >
                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-black text-slate-500">{idx + 1}</span>
-                        <span className="text-xs font-bold uppercase">{area.area}</span>
+                        <span className="text-xs font-black text-slate-500 group-hover:text-red-400">{idx + 1}</span>
+                        <span className="text-xs font-bold uppercase group-hover:text-white">{area.area}</span>
                      </div>
                      <span className="text-xs font-black text-red-400 data-font">+{((area.mismatch / area.expected_load) * 100).toFixed(1)}% Leakage</span>
                   </div>
@@ -149,14 +155,17 @@ const AnalyticsView = ({ detectionData }) => {
             </div>
          </div>
 
-         <div className="glass-panel p-8 rounded-3xl border border-white/5 shadow-2xl relative overflow-hidden flex flex-col justify-between">
+         <div 
+          onClick={() => worstNode && onLocateNode(worstNode.id)}
+          className="glass-panel p-8 rounded-3xl border border-white/5 shadow-2xl relative overflow-hidden flex flex-col justify-between cursor-pointer group hover:border-red-500/40 transition-all"
+         >
             <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-               <span className="material-symbols-outlined text-8xl text-red-500">warning</span>
+               <span className="material-symbols-outlined text-8xl text-red-500 group-hover:scale-110 transition-transform">warning</span>
             </div>
             <div>
-               <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6">Worst Performing Node</h3>
+               <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6 group-hover:text-red-400 transition-colors">Worst Performing Node</h3>
                {worstNode ? (
-                  <div className="bg-red-500/10 p-6 rounded-2xl border border-red-500/20">
+                  <div className="bg-red-500/10 p-6 rounded-2xl border border-red-500/20 group-hover:bg-red-500/20 transition-all">
                      <p className="text-xs font-black uppercase text-red-400 mb-1">{worstNode.id}</p>
                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] mb-4">{worstNode.area}</p>
                      <div className="flex items-end justify-between">
@@ -174,9 +183,9 @@ const AnalyticsView = ({ detectionData }) => {
                   <p className="text-xs text-slate-500 italic">No nodes flagged for theft.</p>
                )}
             </div>
-            <button className="w-full mt-6 bg-white/5 hover:bg-white/10 text-[10px] font-black uppercase tracking-widest py-3 rounded-xl transition-all border border-white/5">
-               Download Full Audit Report
-            </button>
+            <div className="w-full mt-6 bg-red-600 group-hover:bg-red-500 text-white text-[10px] font-black uppercase tracking-widest py-3 rounded-xl transition-all border border-red-400/20 text-center shadow-lg shadow-red-900/20">
+               Locate Critical Anomaly
+            </div>
          </div>
       </div>
     </div>

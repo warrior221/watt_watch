@@ -9,18 +9,34 @@ const cities = {
   Bangalore: { lat: 12.9716, lng: 77.5946 }
 };
 
-// Helper for dynamic map view updates
-function MapViewUpdater({ center, zoom = 12 }) {
+// Single Map Controller to handle initial panning, resizing, and flying to anomalies smoothly
+function MapController({ center, zoom = 12, targetNode }) {
   const map = useMap();
+  
   React.useEffect(() => {
-    map.setView(center, zoom);
-  }, [center, zoom, map]);
+    // Timeout helps invalidate size properly after DOM and Leaflet have fully rendered
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 200);
+
+    if (targetNode) {
+      map.flyTo([targetNode.lat, targetNode.lng], 16, {
+        duration: 1.5,
+        animate: true,
+        easeLinearity: 0.25
+      });
+    } else {
+      map.setView(center, zoom);
+    }
+    
+    return () => clearTimeout(timer);
+  }, [center, zoom, targetNode, map]);
+
   return null;
 }
 
 // Marker Icon Factory
 const createMarkerIcon = (color, size, isTheft) => {
-  const shadowColor = isTheft ? '#f43f5e' : color;
   const glowStyle = isTheft ? 'box-shadow: 0 0 20px #f43f5e, 0 0 10px #f43f5e inset;' : 'box-shadow: 0 0 10px rgba(0,0,0,0.5);';
   
   return L.divIcon({
@@ -42,7 +58,18 @@ const createMarkerIcon = (color, size, isTheft) => {
   });
 };
 
-const GridView = ({ nodes, edges, theftNodes, suspiciousTfs, currentCity }) => {
+const GridView = ({ nodes, edges, theftNodes, suspiciousTfs, currentCity, focussedNodeId }) => {
+  
+  // Find the focussed node object if any
+  const focussedNode = useMemo(() => 
+    nodes?.find(n => n.id === focussedNodeId), 
+    [nodes, focussedNodeId]
+  );
+
+  // Center logic
+  const mapCenter = useMemo(() => {
+    return [cities[currentCity]?.lat || 28.6139, cities[currentCity]?.lng || 77.2090];
+  }, [currentCity]);
   
   // Index nodes for high-speed edge coordinate lookup
   const nodeMap = useMemo(() => {
@@ -50,11 +77,6 @@ const GridView = ({ nodes, edges, theftNodes, suspiciousTfs, currentCity }) => {
     nodes?.forEach(n => map[n.id] = n);
     return map;
   }, [nodes]);
-
-  // Center logic
-  const mapCenter = useMemo(() => {
-    return [cities[currentCity]?.lat || 28.6139, cities[currentCity]?.lng || 77.2090];
-  }, [currentCity]);
 
   return (
     <div className="w-full h-full relative bg-[#0b1326] overflow-hidden">
@@ -65,7 +87,7 @@ const GridView = ({ nodes, edges, theftNodes, suspiciousTfs, currentCity }) => {
         style={{ height: "100%", width: "100%" }}
         zoomControl={false}
       >
-        <MapViewUpdater center={mapCenter} />
+        <MapController center={mapCenter} targetNode={focussedNode} />
         
         <TileLayer 
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
@@ -97,6 +119,7 @@ const GridView = ({ nodes, edges, theftNodes, suspiciousTfs, currentCity }) => {
           const type = (node.type || "").toLowerCase();
           const isTheft = theftNodes?.some(t => t.id === node.id);
           const isSuspicious = suspiciousTfs?.includes(node.id);
+          const isFocussed = focussedNodeId === node.id;
           
           let color = '#3b82f6'; // Default Blue
           let size = 10;
@@ -116,7 +139,7 @@ const GridView = ({ nodes, edges, theftNodes, suspiciousTfs, currentCity }) => {
             <Marker
               key={node.id}
               position={[node.lat, node.lng]}
-              icon={createMarkerIcon(color, size, isTheft)}
+              icon={createMarkerIcon(color, isFocussed ? size * 1.8 : size, isTheft || isFocussed)}
               eventHandlers={{
                 mouseover: (e) => e.target.openPopup(),
                 mouseout: (e) => e.target.closePopup(),
