@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 
-const ProfileDropdown = ({ isOpen, onClose, session }) => {
+const ProfileDropdown = ({ isOpen, onClose, session, onSignOut }) => {
   const ref = useRef(null);
 
   // ── Close on outside click — robust pattern ─────────────────────────────────
@@ -94,7 +94,7 @@ const ProfileDropdown = ({ isOpen, onClose, session }) => {
       <div className="px-4 py-3 border-t border-slate-800">
         <button
           id="profile-logout-btn"
-          onClick={() => supabase.auth.signOut()}
+          onClick={onSignOut}
           className="w-full flex items-center gap-3 px-4 py-2.5 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 hover:bg-red-500/20 transition-all text-sm font-bold"
         >
           <span className="material-symbols-outlined text-sm">logout</span>

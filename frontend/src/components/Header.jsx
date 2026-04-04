@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import ProfileDropdown from './ProfileDropdown';
 
-const Header = ({ onUpload, currentCity, onCityChange, onOpenSettings, onOpenAlerts, alertCount = 0, session }) => {
+const Header = ({ onUpload, currentCity, onCityChange, onOpenSettings, onOpenAlerts, alertCount = 0, session, onSignOut }) => {
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef(null);
 
@@ -94,6 +94,7 @@ const Header = ({ onUpload, currentCity, onCityChange, onOpenSettings, onOpenAle
             isOpen={profileOpen}
             onClose={() => setProfileOpen(false)}
             session={session}
+            onSignOut={onSignOut}
           />
         </div>
       </div>

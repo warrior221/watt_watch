@@ -15,12 +15,14 @@ import SettingsPanel    from './components/SettingsPanel';
 import AlertsPanel      from './components/AlertsPanel';
 import { api }          from './services/api';
 import { supabase }     from './supabaseClient';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 const POLL_INTERVAL_MS = 30_000; // real-time refresh every 30s
 
 function App() {
   // ── Navigation ───────────────────────────────────────────────
-  const [activePage, setActivePage] = useState('grid');
+  const navigate = useNavigate();
+  const location = useLocation();
   const [focussedNode, setFocussedNode] = useState(null);
 
   // ── Data ─────────────────────────────────────────────────────
@@ -140,8 +142,8 @@ function App() {
 
   const handleLocateNode = useCallback((nodeId) => {
     setFocussedNode(nodeId);
-    setActivePage("grid");
-  }, []);
+    navigate('/grid');
+  }, [navigate]);
 
   const handleUpload = async (e) => {
     const file = e.target.files[0];
@@ -161,155 +163,183 @@ function App() {
     } finally { setLoading(false); }
   };
 
-  // ── Early returns ─────────────────────────────────────────────
-  if (!hasLaunched) return <LandingPage onLaunch={() => setHasLaunched(true)} />;
-  if (!session)     return <LoginPage />;
-
-  // ── Page renderer ─────────────────────────────────────────────
-  const renderPage = () => {
-    switch (activePage) {
-      case 'dashboard':
-        return <DashboardView metrics={metrics} alerts={alerts} gridData={gridData} />;
-      case 'analytics':
-        return <AnalyticsView detectionData={detectionFull} onLocateNode={handleLocateNode} />;
-      case 'history':
-        return <HistoryView events={history} onRefresh={() => loadAllData(currentCity)} />;
-      case 'health':
-        return <SystemHealthView metrics={metrics} detectionData={detectionFull} gridData={gridData} />;
-      case 'support':
-        return <SupportView />;
-      case 'grid':
-      default:
-        return (
-          <>
-            <GridView
-              nodes={gridData.nodes}
-              edges={gridData.edges}
-              theftNodes={alerts}
-              suspiciousTfs={suspiciousTfs}
-              currentCity={currentCity}
-              focussedNodeId={focussedNode}
-            />
-
-            {/* Action buttons overlay */}
-            <div className="absolute bottom-14 left-6 flex gap-3 z-[1000]">
-              <button
-                id="generate-grid-btn"
-                onClick={() => loadAllData(currentCity)}
-                className="bg-slate-900/80 backdrop-blur-xl px-5 py-3 rounded-2xl border border-blue-400/30 flex items-center gap-3 hover:bg-slate-800 transition-all shadow-[0_0_30px_rgba(59,130,246,0.15)] group"
-              >
-                <span className="material-symbols-outlined text-blue-400 group-hover:rotate-180 transition-transform duration-700 text-sm">refresh</span>
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">Refresh Grid</span>
-              </button>
-              <button
-                id="inject-theft-btn"
-                onClick={() => {
-                  const poles = gridData.nodes.filter(n => n.type === 'pole');
-                  if (poles.length > 0) {
-                    const pick = poles[Math.floor(Math.random() * poles.length)];
-                    handleTheftInjection([pick.id]);
-                  }
-                }}
-                className="bg-slate-900/80 backdrop-blur-xl px-5 py-3 rounded-2xl border border-red-400/30 flex items-center gap-3 hover:bg-slate-800 transition-all shadow-[0_0_30px_rgba(244,63,94,0.15)] group"
-              >
-                <span className="material-symbols-outlined text-red-400 group-hover:scale-125 transition-transform text-sm">bolt</span>
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">Inject Theft</span>
-              </button>
-            </div>
-
-            <IntelligencePanel
-              summary={{
-                total_expected_load: gridData.nodes.reduce((a, n) => a + (n.expected_load || 0), 0),
-                total_actual_load:   gridData.nodes.reduce((a, n) => a + (n.actual_load   || 0), 0),
-                loss_percentage:     Math.max(0, 100 - (metrics.system_health || 100)),
-              }}
-              history={history}
-              theftNodes={alerts}
-              suspiciousTfs={suspiciousTfs}
-              onLocate={handleLocateNode}
-            />
-          </>
-        );
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      setSession(null);
+      setHasLaunched(false);
+    } catch (err) {
+      console.error('Sign out error:', err);
     }
   };
 
+  // ── Early returns ─────────────────────────────────────────────
+  // No longer early returning for LandingPage or LoginPage here
+  // These will be handled within the routing logic below
+
+  // ── Page renderer ─────────────────────────────────────────────
+  const renderPageRoutes = () => (
+    <Routes>
+      {/* Root redirects to unified login/landing page */}
+      <Route path="/" element={<Navigate to="/login" replace />} />
+
+      {/* Unified Landing & Login Page */}
+      <Route path="/login" element={
+        session ? <Navigate to="/grid" replace /> : (
+          !hasLaunched ? (
+            <LandingPage onLaunch={() => setHasLaunched(true)} />
+          ) : (
+            <LoginPage />
+          )
+        )
+      } />
+      
+      {/* Protected Routes */}
+      <Route path="/dashboard" element={!session ? <Navigate to="/login" replace /> : <DashboardView metrics={metrics} alerts={alerts} gridData={gridData} />} />
+      <Route path="/analytics" element={!session ? <Navigate to="/login" replace /> : <AnalyticsView detectionData={detectionFull} onLocateNode={handleLocateNode} />} />
+      <Route path="/history" element={!session ? <Navigate to="/login" replace /> : <HistoryView events={history} onRefresh={() => loadAllData(currentCity)} />} />
+      <Route path="/health" element={!session ? <Navigate to="/login" replace /> : <SystemHealthView metrics={metrics} detectionData={detectionFull} gridData={gridData} />} />
+      <Route path="/support" element={!session ? <Navigate to="/login" replace /> : <SupportView />} />
+      <Route path="/grid" element={!session ? <Navigate to="/login" replace /> : (
+        <>
+          <GridView
+            nodes={gridData.nodes}
+            edges={gridData.edges}
+            theftNodes={alerts}
+            suspiciousTfs={suspiciousTfs}
+            currentCity={currentCity}
+            focussedNodeId={focussedNode}
+          />
+
+          {/* Action buttons overlay */}
+          <div className="absolute bottom-14 left-6 flex gap-3 z-[1000]">
+            <button
+              id="generate-grid-btn"
+              onClick={() => loadAllData(currentCity)}
+              className="bg-slate-900/80 backdrop-blur-xl px-5 py-3 rounded-2xl border border-blue-400/30 flex items-center gap-3 hover:bg-slate-800 transition-all shadow-[0_0_30px_rgba(59,130,246,0.15)] group"
+            >
+              <span className="material-symbols-outlined text-blue-400 group-hover:rotate-180 transition-transform duration-700 text-sm">refresh</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">Refresh Grid</span>
+            </button>
+            <button
+              id="inject-theft-btn"
+              onClick={() => {
+                const poles = gridData.nodes.filter(n => n.type === 'pole');
+                if (poles.length > 0) {
+                  const pick = poles[Math.floor(Math.random() * poles.length)];
+                  handleTheftInjection([pick.id]);
+                }
+              }}
+              className="bg-slate-900/80 backdrop-blur-xl px-5 py-3 rounded-2xl border border-red-400/30 flex items-center gap-3 hover:bg-slate-800 transition-all shadow-[0_0_30px_rgba(244,63,94,0.15)] group"
+            >
+              <span className="material-symbols-outlined text-red-400 group-hover:scale-125 transition-transform text-sm">bolt</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">Inject Theft</span>
+            </button>
+          </div>
+
+          <IntelligencePanel
+            summary={{
+              total_expected_load: gridData.nodes.reduce((a, n) => a + (n.expected_load || 0), 0),
+              total_actual_load:   gridData.nodes.reduce((a, n) => a + (n.actual_load   || 0), 0),
+              loss_percentage:     Math.max(0, 100 - (metrics.system_health || 100)),
+            }}
+            history={history}
+            theftNodes={alerts}
+            suspiciousTfs={suspiciousTfs}
+            onLocate={handleLocateNode}
+          />
+        </>
+      )} />
+      <Route path="*" element={<Navigate to="/grid" replace />} />
+    </Routes>
+  );
+
   return (
     <div className="overflow-hidden text-white bg-[#0b1326] h-screen w-screen relative font-['Inter']">
-      {/* ── Top Bar ── */}
-      <Header
-        onUpload={handleUpload}
-        currentCity={currentCity}
-        onCityChange={handleCityChange}
-        onOpenSettings={() => setSettingsOpen(true)}
-        onOpenAlerts={() => setAlertsOpen(true)}
-        alertCount={alerts.length}
-        session={session}
-      />
-
-      {/* ── Left Sidebar ── */}
-      <Sidebar
-        metrics={metrics}
-        onRefresh={handleManualDetection}
-        activeTab={activePage}
-        onTabChange={setActivePage}
-      />
-
-      {/* ── Error Banner ── */}
-      {error && (
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-[2000] bg-red-900/40 backdrop-blur-xl border border-red-500/50 px-6 py-3 rounded-2xl text-red-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-3 shadow-2xl">
-          <span className="material-symbols-outlined text-sm">warning</span>
-          {error}
-          <button
-            onClick={() => { setError(null); loadAllData(currentCity); }}
-            className="ml-4 underline hover:text-white transition-colors"
-          >
-            Retry
-          </button>
-          <button onClick={() => setError(null)} className="text-red-300 hover:text-white ml-1">✕</button>
+      {!session && location.pathname === '/login' ? (
+        <div className="h-full w-full">
+          {renderPageRoutes()}
         </div>
-      )}
+      ) : (
+        <>
+          {/* ── Top Bar ── */}
+          <Header
+            onUpload={handleUpload}
+            currentCity={currentCity}
+            onCityChange={handleCityChange}
+            onOpenSettings={() => setSettingsOpen(true)}
+            onOpenAlerts={() => setAlertsOpen(true)}
+            alertCount={alerts.length}
+            session={session}
+            onSignOut={handleSignOut}
+          />
 
-      {/* ── Loading Overlay (first load only) ── */}
-      {loading && !gridData.nodes.length && (
-        <div className="absolute inset-0 z-[2000] bg-slate-950/90 backdrop-blur-3xl flex items-center justify-center">
-          <div className="flex flex-col items-center gap-8 translate-y-[-10%]">
-            <div className="w-20 h-20 relative">
-              <div className="absolute inset-0 border-4 border-blue-400/20 rounded-full" />
-              <div className="absolute inset-0 border-4 border-blue-400 border-t-transparent rounded-full animate-spin" />
-              <span className="material-symbols-outlined text-blue-400 text-3xl absolute inset-0 flex items-center justify-center animate-pulse">radar</span>
+          {/* ── Left Sidebar ── */}
+          <Sidebar
+            metrics={metrics}
+            onRefresh={handleManualDetection}
+            activeTab={location.pathname.substring(1) || 'grid'}
+            onTabChange={(tab) => navigate(`/${tab}`)}
+          />
+
+          {/* ── Error Banner ── */}
+          {error && (
+            <div className="absolute top-20 left-1/2 -translate-x-1/2 z-[2000] bg-red-900/40 backdrop-blur-xl border border-red-500/50 px-6 py-3 rounded-2xl text-red-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-3 shadow-2xl">
+              <span className="material-symbols-outlined text-sm">warning</span>
+              {error}
+              <button
+                onClick={() => { setError(null); loadAllData(currentCity); }}
+                className="ml-4 underline hover:text-white transition-colors"
+              >
+                Retry
+              </button>
+              <button onClick={() => setError(null)} className="text-red-300 hover:text-white ml-1">✕</button>
             </div>
-            <div className="text-center">
-              <h3 className="text-blue-400 font-black uppercase tracking-[0.4em] text-sm mb-2">Watt Watch Monitoring</h3>
-              <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest animate-pulse">Synchronizing {currentCity} Grid...</p>
+          )}
+
+          {/* ── Loading Overlay (first load only) ── */}
+          {loading && !gridData.nodes.length && session && (
+            <div className="absolute inset-0 z-[2000] bg-slate-950/90 backdrop-blur-3xl flex items-center justify-center">
+              <div className="flex flex-col items-center gap-8 translate-y-[-10%]">
+                <div className="w-20 h-20 relative">
+                  <div className="absolute inset-0 border-4 border-blue-400/20 rounded-full" />
+                  <div className="absolute inset-0 border-4 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                  <span className="material-symbols-outlined text-blue-400 text-3xl absolute inset-0 flex items-center justify-center animate-pulse">radar</span>
+                </div>
+                <div className="text-center">
+                  <h3 className="text-blue-400 font-black uppercase tracking-[0.4em] text-sm mb-2">Watt Watch Monitoring</h3>
+                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest animate-pulse">Synchronizing {currentCity} Grid...</p>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          )}
+
+          {/* ── Main Content ── */}
+          <main className="ml-72 pt-16 h-screen relative bg-slate-950">
+            <div className="h-full w-full transition-all duration-300">
+              {renderPageRoutes()}
+            </div>
+          </main>
+
+          {/* ── Footer ── */}
+          <Footer />
+
+          {/* ── Panels & Modals ── */}
+          <SettingsPanel
+            isOpen={settingsOpen}
+            onClose={() => setSettingsOpen(false)}
+            currentCity={currentCity}
+            onCityChange={handleCityChange}
+            onRefresh={() => { handleManualDetection(); setSettingsOpen(false); }}
+          />
+
+          <AlertsPanel
+            isOpen={alertsOpen}
+            onClose={() => setAlertsOpen(false)}
+            alerts={alerts}
+          />
+        </>
       )}
-
-      {/* ── Main Content ── */}
-      <main className="ml-72 pt-16 h-screen relative bg-slate-950">
-        <div className="h-full w-full transition-all duration-300">
-          {renderPage()}
-        </div>
-      </main>
-
-      {/* ── Footer ── */}
-      <Footer />
-
-      {/* ── Panels & Modals ── */}
-      <SettingsPanel
-        isOpen={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        currentCity={currentCity}
-        onCityChange={handleCityChange}
-        onRefresh={() => { handleManualDetection(); setSettingsOpen(false); }}
-      />
-
-      <AlertsPanel
-        isOpen={alertsOpen}
-        onClose={() => setAlertsOpen(false)}
-        alerts={alerts}
-      />
     </div>
   );
 }
