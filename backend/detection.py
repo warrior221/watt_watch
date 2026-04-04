@@ -110,11 +110,23 @@ def detect_theft(force=False, recipient_email: str = None):
                 diff     = round(actual - expected, 2)
 
                 if diff > THRESHOLD:
-                    # ── Correct confidence formula ───────────────────────────
-                    if expected == 0:
-                        confidence = 0.0
-                    else:
-                        confidence = (actual - expected) / expected
+                    # ── Smart Confidence Score (Multi-Factor) ────────────────
+                    # 1. Deviation factor (node's own mismatch ratio)
+                    deviation = (diff / expected) if expected > 0 else 1.0
+                    deviation = min(1.0, deviation)
+                    
+                    # 2. Transformer mismatch factor (parent's aggregate health)
+                    t_mismatch = abs(sum_poles_expected - t.get("actual_load", 0))
+                    t_factor = (t_mismatch / sum_poles_expected) if sum_poles_expected > 0 else 1.0
+                    t_factor = min(1.0, t_factor)
+                    
+                    # 3. Time Series score (historical frequency)
+                    occurrences = len([h for h in grid_data["history"] if h.get("id") == p["id"]])
+                    ts_score = min(1.0, occurrences / 5.0) # Max suspicion after 5 reports
+                    
+                    # Weighted Formula: 0.4 Dev + 0.3 TF + 0.3 TS
+                    confidence = (0.4 * deviation) + (0.3 * t_factor) + (0.3 * ts_score)
+                    
                     confidence     = round(max(0.0, min(confidence, 1.0)), 4)
                     confidence_pct = round(confidence * 100, 2)
                     severity       = "High" if confidence >= 0.7 else "Medium" if confidence >= 0.4 else "Low"
