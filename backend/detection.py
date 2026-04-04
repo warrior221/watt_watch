@@ -2,8 +2,12 @@ from data_store import grid_data
 from config import THRESHOLD
 import datetime
 
-def detect_theft():
+def detect_theft(force=False):
     from collections import defaultdict
+    
+    if not force and grid_data.get("detection_cache"):
+        return grid_data["detection_cache"]
+
     suspicious_transformers = []
     theft_nodes = []
     
@@ -59,14 +63,18 @@ def detect_theft():
                         "transformer": t["id"]
                     })
                     
-                    # Prevent history duplicates if needed, for now just append
+                    # Log to history for persistent view
                     grid_data["history"].append({
                         "time": datetime.datetime.now().isoformat(),
                         "pole": p["id"],
                         "confidence": confidence
                     })
                     
-    return {
+                    # Cap history to prevent memory issues (last 200 items)
+                    if len(grid_data["history"]) > 200:
+                        grid_data["history"] = grid_data["history"][-200:]
+    
+    result = {
         "city": "Uploaded Grid",
         "theft_nodes": theft_nodes,
         "suspicious_transformers": suspicious_transformers,
@@ -79,3 +87,7 @@ def detect_theft():
             "theft_count": len(theft_nodes)
         }
     }
+    
+    # Cache the result to prevent multiple computations and history duplication on polling
+    grid_data["detection_cache"] = result
+    return result

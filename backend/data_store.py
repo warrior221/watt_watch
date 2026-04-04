@@ -3,5 +3,6 @@ grid_data = {
     "nodes": [],
     "edges": [],
     "history": [],
-    "uploaded": False
+    "uploaded": False,
+    "detection_cache": None,
 }

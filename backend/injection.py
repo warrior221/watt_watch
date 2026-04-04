@@ -2,6 +2,7 @@ from data_store import grid_data
 
 def recompute_loads():
     from collections import defaultdict
+    grid_data["detection_cache"] = None # Reset cache as data changed
     
     # Pre-group nodes by their parents
     by_parent = defaultdict(list)
@@ -24,16 +25,16 @@ def recompute_loads():
         pp["actual_load"] = round(sum(t.get("actual_load", 0) for t in child_tfs if t["type"].lower() == "transformer"), 2)
 
 def inject_theft(pole_ids):
+    # Use a dictionary for fast lookup (O(N) initial, O(1) inside loop)
+    node_map = {n["id"]: n for n in grid_data["nodes"] if n["type"].lower() == "pole"}
     affected = []
-    poles = [n for n in grid_data["nodes"] if n["type"].lower() == "pole"]
     
-    for pole_id in pole_ids:
-        for p in poles:
-            if p["id"] == pole_id:
-                p["actual_load"] = round(p.get("actual_load", 0) + 10.0, 2)
-                affected.append(pole_id)
-                print(f"DEBUG: Injected theft into {pole_id}. New load: {p['actual_load']}")
-                break
+    for p_id in pole_ids:
+        if p_id in node_map:
+            p = node_map[p_id]
+            p["actual_load"] = round(p.get("actual_load", 0) + 10.0, 2)
+            affected.append(p_id)
+            print(f"DEBUG: Injected theft into {p_id}. New load: {p['actual_load']}")
                 
     if affected:
         recompute_loads()

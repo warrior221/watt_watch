@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import List
 import pandas as pd
 import io
+import os
 
 from injection import inject_theft, recompute_loads
 from detection import detect_theft
@@ -35,44 +36,65 @@ async def upload_data(file: UploadFile = File(...)):
     try:
         df = pd.read_csv(io.BytesIO(contents))
     except Exception as e:
-        raise HTTPException(status_code=400, detail="Invalid CSV file format.")
+        raise HTTPException(status_code=400, detail=f"CSV Parsing Error: {str(e)}")
     
-    # Validate required columns
-    required_cols = {"id", "type", "lat", "lng", "expected_load", "parent_id", "area"}
+    # Validate minimal matching
+    required_cols = {"id", "lat", "lng"}
+    # Normalize column names to lowercase for flexibility
+    df.columns = [c.lower().strip() for c in df.columns]
+    
     if not required_cols.issubset(set(df.columns)):
-        raise HTTPException(status_code=400, detail="Missing required columns in CSV.")
+        missing = required_cols - set(df.columns)
+        raise HTTPException(status_code=400, detail=f"Missing essential columns: {', '.join(missing)}")
     
     # Reset storage
     grid_data["nodes"].clear()
     grid_data["edges"].clear()
     grid_data["history"].clear()
+    grid_data["detection_cache"] = None
     
     # Read and store nodes and edges efficiently
     df = df.fillna("")
     records = df.to_dict('records')
     
     for row in records:
-        node_id = str(row["id"])
-        node_type = str(row["type"]).strip().lower()
+        node_id = str(row.get("id", ""))
+        if not node_id:
+            continue
+            
+        # Try to guess type or default
+        node_type = str(row.get("type", "")).strip().lower()
+        if not node_type:
+            if "transformer" in node_id.lower(): node_type = "transformer"
+            elif "powerplant" in node_id.lower() or "power_plant" in node_id.lower(): node_type = "powerplant"
+            else: node_type = "pole"
+            
         if node_type == "power_plant": node_type = "powerplant"
         
-        parent_id = str(row["parent_id"]).strip()
+        parent_id = str(row.get("parent_id", "")).strip()
         expected = 0.0
         try:
-            if str(row["expected_load"]) != "":
-                expected = float(row["expected_load"])
+            val = row.get("expected_load", 0)
+            if str(val) != "" and val is not None:
+                expected = float(val)
         except ValueError:
             pass
+            
+        try:
+            lat = float(row.get("lat", 0))
+            lng = float(row.get("lng", 0))
+        except (ValueError, TypeError):
+            continue
             
         node_data = {
             "id": node_id,
             "type": node_type,
-            "lat": float(row["lat"]),
-            "lng": float(row["lng"]),
+            "lat": lat,
+            "lng": lng,
             "expected_load": expected,
             "actual_load": expected if node_type == "pole" else 0.0,
             "parent_id": parent_id if parent_id else None,
-            "area": str(row["area"])
+            "area": str(row.get("area", "General"))
         }
         grid_data["nodes"].append(node_data)
         
@@ -82,9 +104,9 @@ async def upload_data(file: UploadFile = File(...)):
     # Initial load propagation
     recompute_loads()
     grid_data["uploaded"] = True
+    detect_theft(force=True) # Pre-prime cache
     
-    return {"message": f"Successfully loaded {len(grid_data['nodes'])} grid nodes.", "edges_count": len(grid_data['edges'])}
-
+    return {"message": f"Successfully loaded {len(grid_data['nodes'])} nodes.", "edges_count": len(grid_data['edges'])}
 
 @app.get("/generate-grid")
 def generate_grid_api():
@@ -147,7 +169,7 @@ def alerts_api():
 def trigger_detect_api():
     if not grid_data["uploaded"]:
         raise HTTPException(status_code=400, detail="No dataset uploaded")
-    return detect_theft()
+    return detect_theft(force=True)
 
 @app.post("/reset")
 def reset_api():
@@ -155,4 +177,5 @@ def reset_api():
     grid_data["edges"].clear()
     grid_data["history"].clear()
     grid_data["uploaded"] = False
+    grid_data["detection_cache"] = None
     return {"message": "Grid data reset successfully."}

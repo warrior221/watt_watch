@@ -111,7 +111,8 @@ function App() {
       await loadAllData();
     } catch (err) {
       console.error(err);
-      setError('Upload failed. Check file format.');
+      const msg = err.response?.data?.detail || 'Upload failed. Check file format.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -180,7 +181,13 @@ function App() {
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface">Generate</span>
               </button>
               <button 
-                onClick={() => handleTheftInjection([gridData.nodes.filter(n => n.type === 'pole')[Math.floor(Math.random() * gridData.nodes.filter(n => n.type === 'pole').length)]?.id])}
+                onClick={() => {
+                  const poles = gridData.nodes.filter(n => n.type === 'pole');
+                  if (poles.length > 0) {
+                    const randomPole = poles[Math.floor(Math.random() * poles.length)];
+                    handleTheftInjection([randomPole.id]);
+                  }
+                }}
                 className="bg-slate-900/80 backdrop-blur-xl px-5 py-3 rounded-2xl border border-red-400/30 flex items-center gap-3 hover:bg-slate-800 transition-all shadow-[0_0_30px_rgba(244,63,94,0.15)] group"
               >
                 <span className="material-symbols-outlined text-red-400 group-hover:scale-125 transition-transform text-sm">bolt</span>
