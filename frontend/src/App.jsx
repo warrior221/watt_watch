@@ -67,15 +67,24 @@ function App() {
   const loadAllData = useCallback(async (city = currentCity) => {
     try {
       setError(null);
-
       const email = session?.user?.email || null;
 
-      const [grid, currentMetrics, detection, historyData] = await Promise.all([
+      // Fetch grid, detection results (with email), and history efficiently
+      const [grid, detection, historyData] = await Promise.all([
         api.getGridData(city),
-        api.getMetrics(),
-        api.getDetectionResults(email),   // forwards email → backend sends alert to this address
+        api.getDetectionResults(email),
         api.getHistory(),
       ]);
+      
+      const system_health = detection.summary?.loss_percentage !== undefined 
+          ? Number(Math.max(0, 100 - detection.summary.loss_percentage).toFixed(2)) 
+          : 100;
+          
+      const currentMetrics = {
+          total_nodes: grid.nodes?.length || 0,
+          transformers: grid.nodes?.filter(n => (n.type || '').toLowerCase() === 'transformer').length || 0,
+          system_health: system_health
+      };
 
       setGridData(grid);
       setMetrics(currentMetrics);
