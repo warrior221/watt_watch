@@ -1,87 +1,110 @@
-# Watt Watch: Electricity Theft Detection & Smart Grid Analytics
+# Watt Watch: Advanced Electricity Theft Detection & Smart Grid Analytics
 
-Watt Watch is a sophisticated, real-time platform designed to monitor city-scale smart grids, identify power distribution irregularities, and visualize electricity theft with high-confidence geospatial tracking.
+Watt Watch is an enterprise-grade IoT sensing and data intelligence platform developed for monitoring modern smart grids. 
 
----
-
-## ⚡ Core Architecture & Engineering
-
-The system operates on a complex hierarchical graph model: **Power Plant → Transformer → Pole**. 
-Data integrity is maintained through a recursive **Load Propagation Layer** in the Python backend, ensuring that any single kW discrepancy at the edge (pole) is accurately mapped through its parent transformer and into the city grid's aggregate health reports.
-
-### 🧠 Smart Confidence Scoring Engine (Version 2.0)
-Unlike simple threshold-based detection, Watt Watch now utilizes a **Weighted Multi-Factor Anomaly Algorithm**:
-$$Confidence = (0.4 \times Node Deviation) + (0.3 \times Transformer Health) + (0.3 \times Historical Persistence)$$
-
-*   **Node Deviation (40%):** The raw mismatch percentage of a single pole.
-*   **Infrastructure Context (30%):** The overall health of the parent transformer—nodes are penalized more if the entire transformer tree shows aggregate leakage.
-*   **Time Series Recurrence (30%):** An automated scoring system that tracks how many times a node has been flagged in recent detection cycles.
+The system leverages hierarchical data structures and a deterministic, multi-factor anomaly scoring engine to identify, visualize, and report energy leakage in real-time. It is designed to scale across thousands of nodes from Power Plants down to individual street-level poles.
 
 ---
 
-## 🛠️ Key Features & Views
+## 🏛️ Project Architecture & Analysis
 
-### 📍 Interactive Grid Visualization (Leaflet.js)
-A custom-built **MapController** manages smooth, cinematic `flyTo` transitions. When an anomaly is detected, the map automatically tracks the location with appropriate zoom levels while maintaining a consistent dark-theme UI.
+The platform is divided into a high-performance **Python/FastAPI** backend and a reactive **Vite/React** frontend. 
 
-### 📊 Intelligence Panels & Alerts
-*   **Anomaly Intelligence Panel:** A floating, scrollable sidebar that lists suspicious sources (transformers) and active thefts, providing real-time load differential statistics (Expected vs. Actual) formatted to 2 decimal places.
-*   **Theft Injection Simulator:** A sandbox feature allowing users to "ZAP" random poles with artificial load spikes to test system responsiveness.
-*   **Automated SMTP Sentinel:** When a high-severity theft is detected, the backend autonomously triggers a professional Gmail-alert dispatch to the logged-in user's email ID, providing coordinates, Confidence Score, and severity.
+### 1. The Hierarchical Graph Engine
+The backend maintains an in-memory graph of the power distribution network. The relationships are established during data ingestion via:
+*   **Power Plants:** The root sourcing nodes.
+*   **Transformers:** The intermediate distribution and aggregation hubs.
+*   **Poles (Sensors):** The leaf-level nodes where most electrical losses occur.
 
-### 📈 Comprehensive Analytics Hub (Recharts)
-*   **Load Analysis:** Bar charts mapping area-wise leakage.
-*   **Integrity Gauges:** Pie charts reflecting total grid efficiency vs. system-wide losses.
-*   **Critical Vulnerability Reports:** Highlights the worst-performing city sectors.
+### 2. Recursive Load Recomputation (The Intelligence Core)
+When a theft is detected or injected, the backend initiates a recursive **Load Propagation Sync**. It calculates the `expected_load` (the theoretical sum of all downstream consumers) and compares it against the `actual_load` (sensor data). Discrepancies larger than the defined `THRESHOLD` (default 0.5 kW) trigger a widespread grid alert.
 
-### 🆕 Advanced Grid Management Views
-*   **System Health:** A detailed, tree-based drill-down of every transformer and connected pole's performance.
-*   **History Vault:** A centralized log of every anomaly ever recorded, fully filterable and searchable.
-*   **Support & Documentation:** Built-in guidance for field enforcement teams.
-
----
-
-## 🚀 Performance Optimizations
-
-1.  **Network Request Consolidation:** The frontend has been optimized to batch data fetching, cutting browser network load by **50%** while maintaining real-time accuracy.
-2.  **O(1) Data Traversal:** Back-end load recomputation uses `defaultdict` hashing for parent-child relationship mappings, ensuring $O(N)$ linear performance even as the grid scales to thousands of nodes.
-3.  **UI Glassmorphism & Z-Index Management:** Precision CSS layering ensures intelligence panels float above the Leaflet map's interaction layers, providing a premium, glitch-free software experience.
-4.  **Responsive Fluidity:** m-CSS constraints ensure that even high-density analytics dashboards render perfectly on laptop resolutions (13-16") without label clipping or layout overflow.
+### 3. Smart Confidence Matrix (V2.0 Logic)
+To reduce false positives, the platform moved away from simple binary tagging. It now scores every anomaly using a weighted three-pillar matrix:
+*   **Deviation (40%):** Weighted by the magnitude of the specific node's mismatch ratio.
+*   **Tree Health (30%):** Cross-references the parent transformer's total aggregate mismatch.
+*   **Recurrence (30%):** Scores based on temporal persistence from the `HistoryVault`—frequent offenders are prioritized automatically.
 
 ---
 
-## ⚙️ Technical Stack
+## 📁 System Folder Structure
 
-*   **Frontend:** React (Vite), TailwindCSS, Leaflet.js, Recharts, Lucide Icons, Material Symbols.
-*   **Backend:** Python 3.10+, FastAPI (Asynchronous), Pandas, Pydantic.
-*   **Database/Auth:** Supabase (Auth/Sessions & Persistence).
-*   **Deployment/Ops:** Uvicorn (ASGI), Dotenv (Environmental Security).
+```bash
+Watt_Watch/
+├── backend/                   # Python FastAPI Engine
+│   ├── data/                  # Local CSV datasets
+│   ├── __pycache__/           # Compiled bytecode
+│   ├── config.py              # Environment and Threshold configs
+│   ├── data_loader.py         # CSV Parser and Graph Builder
+│   ├── data_store.py          # Global state (In-memory cache)
+│   ├── detection.py           # Multi-factor Anomaly Engine & SMTP
+│   ├── injection.py           # Simulation: Load Propagation Logic
+│   ├── main.py                # FastAPI Routes and Middleware
+│   └── requirements.txt       # Backend Dependencies
+├── frontend/                  # React/Vite UI
+│   ├── src/                   # Source files
+│   │   ├── assets/            # Static media
+│   │   ├── services/          # API & Supabase interface
+│   │   └── components/        # View Layer
+│   │       ├── AnalyticsView.jsx     # Recharts Charting
+│   │       ├── GridView.jsx          # Leaflet Geospatial mapping
+│   │       ├── DashboardView.jsx     # Real-time KPIs
+│   │       ├── SystemHealthView.jsx  # Tree-depth monitoring
+│   │       └── ...                   # Modal & Layout UI
+│   ├── index.html             # React Entry point
+│   ├── package.json           # Frontend Dependencies
+│   └── vite.config.js         # Build pipeline
+├── README.md                  # Detailed Documentation
+└── .env.example               # Configuration Template
+```
 
 ---
 
-## 📥 Setup & Configuration
+## 🚀 Performance & UI Engineering
 
-### Backend Setup
+*   **Minimized API Footprint:** The frontend utilizes a batch-loading strategy for `loadAllData`. By fetching core grid and the pre-computed detection cache simultaneously, we've reduced active network requests by **50%**, ensuring high-speed UI responsiveness on 3G/4G field connections.
+*   **O(1) Data Access:** The backend uses `defaultdict` and hash-map indexing for parent-child relationship tracking, eliminating slow $O(N^2)$ traversal in large-scale datasets.
+*   **Geospatial Tracking:** The **MapController** plugin for Leaflet implements a unified hook system for smooth coordinate tracking and automatic `invalidateSize` resizing, preventing white-flash rendering artifacts during aggressive zooms.
+*   **Automated Response:** The backend's **SMTP Sentinel** provides an instant SMTP link for enforcement team notifications, sent directly to the logged-in user's email ID.
+
+---
+
+## ⚙️ Deployment & Setup
+
+### 1. Global Setup
+Clone the repository and locate both main folders. Ensure you have **Python 3.10+** and **Node.js 18+** installed.
+
+### 2. Backend Initialization
 ```bash
 cd backend
 pip install -r requirements.txt
+cp ../.env.example .env (and configure)
 uvicorn main:app --reload
 ```
-*Port: 8000*
+The server will start at `localhost:8000`.
 
-### Frontend Setup
+### 3. Frontend Initialization
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-*Port: 5173*
+The production UI will serve at `localhost:5173`.
 
-### Environmental Variables (`.env`)
-To enable automated email alerts, configure the following in your backend root:
-```ini
-ALERT_EMAIL=your-gmail@gmail.com
-ALERT_EMAIL_PASSWORD=your-app-password (16 chars)
-ALERT_RECIPIENT=default-alert-recipient@email.com
-THRESHOLD=0.5
-```
+### 4. Configuring Security (Supabase)
+To enable the profile system and sign-on security:
+1.  Setup a **Supabase** project.
+2.  Enable **Email Auth**.
+3.  Fill in the `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in your `.env`.
+
+---
+
+## 🔒 Environment Variable Reference (`.env.example`)
+
+| Variable | Use | Default |
+| :--- | :--- | :--- |
+| `THRESHOLD` | Trigger sensitivity for kW mismatch. | `0.5` |
+| `ALERT_EMAIL` | Sender address for gmail alerts. | `your@gmail.com` |
+| `ALERT_EMAIL_PASSWORD` | Google 16-char App Password. | `xxxx-xxxx-xxxx` |
+| `ALERT_RECIPIENT` | Fallback alert destination address. | `admin@grid.com` |
+| `SUPABASE_URL` | Your secure Supabase project URL. | `...supabase.co` |
