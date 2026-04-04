@@ -1,0 +1,73 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  darkMode: "class",
+  theme: {
+    extend: {
+      "colors": {
+              "surface-container-high": "#222a3d",
+              "error": "#ffb4ab",
+              "on-primary": "#002e6a",
+              "on-secondary-container": "#9fb5e7",
+              "background": "#0b1326",
+              "surface-container-lowest": "#060e20",
+              "secondary-fixed": "#d8e2ff",
+              "tertiary-fixed": "#ffdcc6",
+              "secondary-container": "#304671",
+              "outline-variant": "#424754",
+              "on-tertiary": "#502400",
+              "on-error-container": "#ffdad6",
+              "surface-container-highest": "#2d3449",
+              "secondary-fixed-dim": "#b1c6f9",
+              "surface-variant": "#2d3449",
+              "primary-fixed-dim": "#adc6ff",
+              "surface-container": "#171f33",
+              "primary-fixed": "#d8e2ff",
+              "on-secondary": "#182f59",
+              "on-primary-container": "#00285d",
+              "outline": "#8c909f",
+              "surface-container-low": "#131b2e",
+              "on-tertiary-fixed-variant": "#723600",
+              "primary": "#adc6ff",
+              "surface": "#0b1326",
+              "secondary": "#b1c6f9",
+              "on-background": "#dae2fd",
+              "tertiary-container": "#df7412",
+              "on-surface": "#dae2fd",
+              "surface-dim": "#0b1326",
+              "inverse-surface": "#dae2fd",
+              "tertiary-fixed-dim": "#ffb786",
+              "on-primary-fixed": "#001a42",
+              "surface-bright": "#31394d",
+              "surface-tint": "#adc6ff",
+              "on-error": "#690005",
+              "inverse-on-surface": "#283044",
+              "tertiary": "#ffb786",
+              "primary-container": "#4d8eff",
+              "error-container": "#93000a",
+              "on-tertiary-container": "#461f00",
+              "on-secondary-fixed": "#001a42",
+              "on-surface-variant": "#c2c6d6",
+              "on-secondary-fixed-variant": "#304671",
+              "inverse-primary": "#005ac2",
+              "on-tertiary-fixed": "#311400",
+              "on-primary-fixed-variant": "#004395"
+      },
+      "borderRadius": {
+              "DEFAULT": "0.125rem",
+              "lg": "0.25rem",
+              "xl": "0.5rem",
+              "full": "0.75rem"
+      },
+      "fontFamily": {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Space Grotesk"]
+      }
+    },
+  },
+  plugins: [],
+}
