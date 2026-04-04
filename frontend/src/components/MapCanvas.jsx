@@ -35,7 +35,14 @@ const createIcon = (color, size, isTheft, isSuspicious) => {
 
 const MapCanvas = ({ nodes, edges, theftNodes, suspiciousTfs, onInjectTheft, onGenerateGrid, onDetectTheft, currentCity, onCityChange }) => {
   
-  const poleIds = useMemo(() => nodes?.filter(n => n.type === 'pole').map(p => p.id) || [], [nodes]);
+  // Optimize lookups by indexing nodes
+  const nodeMap = useMemo(() => {
+    const map = {};
+    nodes?.forEach(n => map[n.id] = n);
+    return map;
+  }, [nodes]);
+
+  const poleIds = useMemo(() => nodes?.filter(n => (n.type || "").toLowerCase() === 'pole').map(p => p.id) || [], [nodes]);
 
   return (
     <div className="absolute inset-0 z-0 overflow-hidden">
@@ -53,8 +60,8 @@ const MapCanvas = ({ nodes, edges, theftNodes, suspiciousTfs, onInjectTheft, onG
 
         {/* STEP 6: DRAW EDGES */}
         {edges?.map((edge, idx) => {
-          const start = nodes?.find(n => n.id === edge.from);
-          const end = nodes?.find(n => n.id === edge.to);
+          const start = nodeMap[edge.from];
+          const end = nodeMap[edge.to];
           if (!start || !end) return null;
           
           return (
@@ -73,16 +80,17 @@ const MapCanvas = ({ nodes, edges, theftNodes, suspiciousTfs, onInjectTheft, onG
           
           let color = '#22d3ee';
           let size = 10;
+          const type = (node.type || "").toLowerCase();
           
-          if (node.type === 'power_plant') {
+          if (type === 'powerplant' || type === 'power_plant') {
             size = 24;
-            color = '#3b82f6';
-          } else if (node.type === 'transformer') {
+            color = '#a855f7'; // Purple
+          } else if (type === 'transformer') {
             size = 16;
-            color = isSuspicious ? '#f59e0b' : '#fbbf24';
-          } else if (node.type === 'pole') {
+            color = isSuspicious ? '#f59e0b' : '#eab308'; // Yellow/Amber
+          } else if (type === 'pole') {
             size = 8;
-            color = isTheft ? '#f43f5e' : '#22d3ee';
+            color = isTheft ? '#f43f5e' : '#22c55e'; // Green (Red if theft)
           }
 
           return (

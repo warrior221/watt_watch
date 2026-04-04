@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Header = () => {
+const Header = ({ onUpload }) => {
   return (
     <header className="fixed top-0 w-full z-50 flex justify-between items-center px-6 h-16 bg-slate-950/80 backdrop-blur-xl shadow-[0_0_40px_-10px_rgba(0,0,0,0.4)]">
       <div className="flex items-center gap-8">
@@ -17,6 +17,11 @@ const Header = () => {
           <span className="text-[10px] font-bold uppercase tracking-wider text-error">Anomaly Detected</span>
         </div>
         <div className="flex gap-2">
+          <label className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl border border-blue-400/50 transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(59,130,246,0.5)]">
+            <span className="material-symbols-outlined text-lg">upload_file</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.1em]">Upload Dataset</span>
+            <input type="file" accept=".csv" className="hidden" onChange={onUpload} />
+          </label>
           <button className="bg-surface-container-highest hover:bg-surface-bright text-on-surface p-2 rounded-xl transition-all scale-95 duration-200">
             <span className="material-symbols-outlined text-xl">settings</span>
           </button>

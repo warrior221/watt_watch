@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Sidebar = ({ metrics, onRefresh }) => {
+const Sidebar = ({ metrics, onRefresh, activeTab, onTabChange }) => {
   const totalNodes = metrics?.total_nodes || 0;
   const transformersCount = metrics?.transformers || 0;
   const health = metrics?.system_health || 0;
@@ -19,14 +19,28 @@ const Sidebar = ({ metrics, onRefresh }) => {
         </div>
       </div>
       <nav className="flex-1 px-4 space-y-1">
-        <a className="flex items-center gap-3 px-4 py-3 bg-blue-500/10 text-blue-400 border-r-4 border-blue-500 transition-all duration-300" href="#">
-          <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>dashboard</span>
+        <button 
+          onClick={() => onTabChange("dashboard")}
+          className={`w-full flex items-center gap-3 px-4 py-3 transition-all duration-300 rounded-xl ${
+            activeTab === "dashboard" 
+            ? "bg-blue-500/10 text-blue-400 border-r-4 border-blue-500" 
+            : "text-slate-500 hover:bg-slate-800/50 hover:text-blue-300"
+          }`}
+        >
+          <span className="material-symbols-outlined" style={{ fontVariationSettings: activeTab === "dashboard" ? "'FILL' 1" : "" }}>dashboard</span>
           <span className="font-bold text-sm">Dashboard</span>
-        </a>
-        <a className="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-800/50 hover:text-blue-300 transition-all duration-300" href="#">
+        </button>
+        <button 
+          onClick={() => onTabChange("grid")}
+          className={`w-full flex items-center gap-3 px-4 py-3 transition-all duration-300 rounded-xl ${
+            activeTab === "grid" 
+            ? "bg-blue-500/10 text-blue-400 border-r-4 border-blue-500" 
+            : "text-slate-500 hover:bg-slate-800/50 hover:text-blue-300"
+          }`}
+        >
           <span className="material-symbols-outlined">grid_view</span>
           <span className="font-medium text-sm">Grid View</span>
-        </a>
+        </button>
         <a className="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-800/50 hover:text-blue-300 transition-all duration-300" href="#">
           <span className="material-symbols-outlined">analytics</span>
           <span className="font-medium text-sm">Analytics</span>

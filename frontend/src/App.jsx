@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import MapCanvas from './components/MapCanvas';
+import GridView from './components/GridView';
+import DashboardView from './components/DashboardView';
 import IntelligencePanel from './components/IntelligencePanel';
 import Footer from './components/Footer';
 import { api } from './services/api';
@@ -14,6 +16,7 @@ function App() {
   const [suspiciousTfs, setSuspiciousTfs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [currentTab, setCurrentTab] = useState("grid");
 
   const loadAllData = useCallback(async (city = currentCity) => {
     try {
@@ -72,10 +75,35 @@ function App() {
     }
   };
 
+  const handleUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      setLoading(true);
+      await api.uploadData(formData);
+      // Wait a moment for backend to settle, then load grid
+      await loadAllData();
+    } catch (err) {
+      console.error(err);
+      setError('Upload failed. Check file format.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="overflow-hidden text-on-surface bg-[#0b1326] h-screen w-screen relative font-['Inter']">
-      <Header />
-      <Sidebar metrics={metrics} onRefresh={handleManualDetection} />
+      <Header onUpload={handleUpload} />
+      <Sidebar 
+        metrics={metrics} 
+        onRefresh={handleManualDetection} 
+        activeTab={currentTab} 
+        onTabChange={setCurrentTab} 
+      />
       
       {error && (
         <div className="absolute top-20 left-1/2 -translate-x-1/2 z-[2000] bg-red-900/40 backdrop-blur-xl border border-red-500/50 px-6 py-3 rounded-2xl text-red-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-3 shadow-2xl">
@@ -101,28 +129,52 @@ function App() {
         </div>
       )}
 
-      <main className="ml-72 pt-16 h-screen relative">
-        <MapCanvas 
-          nodes={gridData.nodes} 
-          edges={gridData.edges} 
-          theftNodes={alerts} 
-          suspiciousTfs={suspiciousTfs}
-          onInjectTheft={handleTheftInjection}
-          onGenerateGrid={() => loadAllData(currentCity)} 
-          onDetectTheft={handleManualDetection}
-          currentCity={currentCity}
-          onCityChange={handleCityChange}
-        />
-        <IntelligencePanel 
-          summary={{
-            total_expected_load: gridData.nodes.reduce((acc, n) => acc + (n.expected_load || 0), 0) || 0,
-            total_actual_load: gridData.nodes.reduce((acc, n) => acc + (n.actual_load || 0), 0) || 0,
-            loss_percentage: Math.max(0, 100 - (metrics.system_health || 100))
-          }}
-          history={[]}
-          theftNodes={alerts}
-          suspiciousTfs={suspiciousTfs}
-        />
+      <main className="ml-72 pt-16 h-screen relative bg-slate-950">
+        {currentTab === "grid" ? (
+          <>
+            <GridView 
+              nodes={gridData.nodes} 
+              edges={gridData.edges} 
+              theftNodes={alerts} 
+              suspiciousTfs={suspiciousTfs}
+              currentCity={currentCity}
+            />
+            
+            {/* Buttons and Actions Overlay */}
+            <div className="absolute bottom-14 left-6 flex gap-3 z-[1000]">
+              <button 
+                onClick={() => loadAllData(currentCity)}
+                className="bg-slate-900/80 backdrop-blur-xl px-5 py-3 rounded-2xl border border-blue-400/30 flex items-center gap-3 hover:bg-slate-800 transition-all shadow-[0_0_30px_rgba(59,130,246,0.15)] group"
+              >
+                <span className="material-symbols-outlined text-blue-400 group-hover:rotate-180 transition-transform duration-700 text-sm">refresh</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface">Generate</span>
+              </button>
+              <button 
+                onClick={() => handleTheftInjection([gridData.nodes.filter(n => n.type === 'pole')[Math.floor(Math.random() * gridData.nodes.filter(n => n.type === 'pole').length)]?.id])}
+                className="bg-slate-900/80 backdrop-blur-xl px-5 py-3 rounded-2xl border border-red-400/30 flex items-center gap-3 hover:bg-slate-800 transition-all shadow-[0_0_30px_rgba(244,63,94,0.15)] group"
+              >
+                <span className="material-symbols-outlined text-red-400 group-hover:scale-125 transition-transform text-sm">bolt</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface">Inject</span>
+              </button>
+            </div>
+            <IntelligencePanel 
+              summary={{
+                total_expected_load: gridData.nodes.reduce((acc, n) => acc + (n.expected_load || 0), 0) || 0,
+                total_actual_load: gridData.nodes.reduce((acc, n) => acc + (n.actual_load || 0), 0) || 0,
+                loss_percentage: Math.max(0, 100 - (metrics.system_health || 100))
+              }}
+              history={[]}
+              theftNodes={alerts}
+              suspiciousTfs={suspiciousTfs}
+            />
+          </>
+        ) : (
+          <DashboardView 
+            metrics={metrics}
+            alerts={alerts}
+            gridData={gridData}
+          />
+        )}
       </main>
       <Footer />
     </div>

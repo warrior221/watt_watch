@@ -3,11 +3,26 @@ from config import THRESHOLD
 import datetime
 
 def detect_theft():
+    from collections import defaultdict
     suspicious_transformers = []
     theft_nodes = []
     
-    total_expected = sum(p["expected_load"] for p in grid_data["poles"])
-    total_actual = sum(p["actual_load"] for p in grid_data["poles"])
+    # Group poles by parent transformer
+    by_parent = defaultdict(list)
+    poles = []
+    transformers = []
+    
+    for n in grid_data["nodes"]:
+        ntype = n["type"].lower()
+        if ntype == "pole":
+            poles.append(n)
+            if n.get("parent_id"):
+                by_parent[n["parent_id"]].append(n)
+        elif ntype == "transformer":
+            transformers.append(n)
+    
+    total_expected = sum(p.get("expected_load", 0) for p in poles)
+    total_actual = sum(p.get("actual_load", 0) for p in poles)
     
     total_expected = round(total_expected, 2)
     total_actual = round(total_actual, 2)
@@ -17,36 +32,34 @@ def detect_theft():
     if total_expected > 0:
         loss_percentage = round((total_loss / total_expected) * 100, 2)
 
-    for t in grid_data["transformers"]:
-        child_poles = [p for p in grid_data["poles"] if p["parent_id"] == t["id"]]
-        sum_poles_expected = sum(p["expected_load"] for p in child_poles)
+    for t in transformers:
+        child_poles = by_parent.get(t["id"], [])
+        sum_poles_expected = sum(p.get("expected_load", 0) for p in child_poles)
         
         # Check mismatch for transformer
-        if abs(sum_poles_expected - t["actual_load"]) > THRESHOLD:
+        if abs(sum_poles_expected - t.get("actual_load", 0)) > THRESHOLD:
             suspicious_transformers.append(t["id"])
-            print(f"DEBUG: Mark transformer {t['id']} suspicious.")
             
             # Inside suspicious transformer:
             for p in child_poles:
-                diff = round(p["actual_load"] - p["expected_load"], 2)
+                diff = round(p.get("actual_load", 0) - p.get("expected_load", 0), 2)
                 if diff > THRESHOLD:
-                    confidence = diff / p["expected_load"] if p["expected_load"] > 0 else 1.0
-                    confidence = min(confidence, 1.0)
-                    confidence = round(confidence, 2)
+                    confidence = diff / p["expected_load"] if p.get("expected_load", 0) > 0 else 1.0
+                    confidence = round(min(confidence, 1.0), 2)
                     
-                    print(f"DEBUG: Mark pole {p['id']} as theft.")
                     theft_nodes.append({
                         "id": p["id"],
-                        "area": p["area"],
+                        "area": p.get("area", ""),
                         "lat": p["lat"],
                         "lng": p["lng"],
-                        "actual_load": p["actual_load"],
-                        "expected_load": p["expected_load"],
+                        "actual_load": p.get("actual_load", 0),
+                        "expected_load": p.get("expected_load", 0),
                         "mismatch": diff,
                         "confidence": confidence,
                         "transformer": t["id"]
                     })
                     
+                    # Prevent history duplicates if needed, for now just append
                     grid_data["history"].append({
                         "time": datetime.datetime.now().isoformat(),
                         "pole": p["id"],
@@ -54,7 +67,7 @@ def detect_theft():
                     })
                     
     return {
-        "city": "Delhi",
+        "city": "Uploaded Grid",
         "theft_nodes": theft_nodes,
         "suspicious_transformers": suspicious_transformers,
         "summary": {

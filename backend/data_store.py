@@ -1,8 +1,7 @@
 # Global storage for grid data
 grid_data = {
-    "poles": [],
-    "transformers": [],
-    "power_plants": [],
+    "nodes": [],
     "edges": [],
-    "history": []
+    "history": [],
+    "uploaded": False
 }

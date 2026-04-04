@@ -10,8 +10,20 @@ const client = axios.create({
 });
 
 export const api = {
-  getGridData: async (city = "Delhi") => {
-    const res = await client.get(`/generate-grid?city=${city}`);
+  uploadData: async (formData) => {
+    const res = await client.post('/upload-data', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return res.data;
+  },
+  resetData: async () => {
+    const res = await client.post('/reset');
+    return res.data;
+  },
+  getGridData: async () => {
+    const res = await client.get(`/generate-grid`);
     return res.data;
   },
   getMetrics: async () => {

@@ -128,33 +128,7 @@ const IntelligencePanel = ({ summary, history, theftNodes, suspiciousTfs }) => {
         </div>
       </section>
 
-      {/* History Panel */}
-      <section className="glass-panel rounded-2xl border border-outline-variant/10 flex-1 flex flex-col min-h-0 shadow-2xl">
-        <div className="p-5 border-b border-outline-variant/10 flex justify-between items-center">
-          <h3 className="text-[10px] uppercase tracking-widest text-on-surface-variant font-black">System Terminal</h3>
-          <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-ping"></span>
-        </div>
-        <div className="p-5 overflow-y-auto flex-1 space-y-4 custom-scrollbar">
-          {history?.length > 0 ? history.slice().reverse().map((item, idx) => (
-            <div key={idx} className="flex gap-4 group animate-in fade-in slide-in-from-bottom-2">
-              <div className="flex-shrink-0 w-1 bg-blue-500 group-hover:bg-error transition-colors rounded-full"></div>
-              <div>
-                <p className="data-font text-[9px] font-black text-blue-400 group-hover:text-error transition-colors">
-                  {new Date(item.time).toLocaleTimeString()}
-                </p>
-                <p className="text-[11px] text-on-surface font-medium mt-1 leading-relaxed">
-                  Theft detected at node <span className="font-black text-blue-300">{item.pole}</span>. 
-                  Confidence level: <span className="font-black text-error">{(item.confidence * 100).toFixed(1)}%</span>
-                </p>
-              </div>
-            </div>
-          )) : (
-            <div className="h-full flex items-center justify-center py-10 opacity-30">
-               <p className="text-[10px] font-black uppercase tracking-widest">No logs found</p>
-            </div>
-          )}
-        </div>
-      </section>
+
     </div>
   );
 };

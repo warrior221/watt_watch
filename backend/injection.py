@@ -1,15 +1,40 @@
 from data_store import grid_data
-from data_loader import recompute_loads
+
+def recompute_loads():
+    from collections import defaultdict
+    
+    # Pre-group nodes by their parents
+    by_parent = defaultdict(list)
+    nodes_by_type = defaultdict(list)
+    
+    for n in grid_data["nodes"]:
+        ntype = n["type"].lower()
+        nodes_by_type[ntype].append(n)
+        if n.get("parent_id"):
+            by_parent[n["parent_id"]].append(n)
+
+    # Recompute Transformer loads from child poles
+    for t in nodes_by_type.get("transformer", []):
+        child_poles = by_parent.get(t["id"], [])
+        t["actual_load"] = round(sum(p.get("actual_load", 0) for p in child_poles if p["type"].lower() == "pole"), 2)
+        
+    # Recompute PowerPlant loads from child transformers
+    for pp in nodes_by_type.get("powerplant", []) + nodes_by_type.get("power_plant", []):
+        child_tfs = by_parent.get(pp["id"], [])
+        pp["actual_load"] = round(sum(t.get("actual_load", 0) for t in child_tfs if t["type"].lower() == "transformer"), 2)
 
 def inject_theft(pole_ids):
     affected = []
+    poles = [n for n in grid_data["nodes"] if n["type"].lower() == "pole"]
+    
     for pole_id in pole_ids:
-        for p in grid_data["poles"]:
+        for p in poles:
             if p["id"] == pole_id:
-                p["actual_load"] = round(p["actual_load"] + 10.0, 2)
+                p["actual_load"] = round(p.get("actual_load", 0) + 10.0, 2)
                 affected.append(pole_id)
                 print(f"DEBUG: Injected theft into {pole_id}. New load: {p['actual_load']}")
                 break
                 
-    recompute_loads()
+    if affected:
+        recompute_loads()
     return affected

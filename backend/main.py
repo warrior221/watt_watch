@@ -1,15 +1,16 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
-from data_loader import load_data
-from injection import inject_theft
+import pandas as pd
+import io
+
+from injection import inject_theft, recompute_loads
 from detection import detect_theft
 from data_store import grid_data
 
-app = FastAPI(title="City-Based Electricity Theft Detection System")
+app = FastAPI(title="Uploadable City-Based Electricity Theft Detection System")
 
-# Ensure cross-origin stability for our React frontend 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,55 +19,89 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
-def read_root():
-    return {
-        "status": "online",
-        "system": "PhantomNode Electricity Theft Detection",
-        "documentation": "/docs",
-        "endpoints": ["/generate-grid", "/detect-theft", "/inject-theft", "/history"]
-    }
-
 class TheftInjectionRequest(BaseModel):
     poles: List[str]
 
-@app.on_event("startup")
-def startup_event():
-    load_data()
+@app.get("/")
+def read_root():
+    return {"status": "online"}
+
+@app.post("/upload-data")
+async def upload_data(file: UploadFile = File(...)):
+    # Read the file contents
+    contents = await file.read()
+    
+    # Parse CSV
+    try:
+        df = pd.read_csv(io.BytesIO(contents))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Invalid CSV file format.")
+    
+    # Validate required columns
+    required_cols = {"id", "type", "lat", "lng", "expected_load", "parent_id", "area"}
+    if not required_cols.issubset(set(df.columns)):
+        raise HTTPException(status_code=400, detail="Missing required columns in CSV.")
+    
+    # Reset storage
+    grid_data["nodes"].clear()
+    grid_data["edges"].clear()
+    grid_data["history"].clear()
+    
+    # Read and store nodes and edges efficiently
+    df = df.fillna("")
+    records = df.to_dict('records')
+    
+    for row in records:
+        node_id = str(row["id"])
+        node_type = str(row["type"]).strip().lower()
+        if node_type == "power_plant": node_type = "powerplant"
+        
+        parent_id = str(row["parent_id"]).strip()
+        expected = 0.0
+        try:
+            if str(row["expected_load"]) != "":
+                expected = float(row["expected_load"])
+        except ValueError:
+            pass
+            
+        node_data = {
+            "id": node_id,
+            "type": node_type,
+            "lat": float(row["lat"]),
+            "lng": float(row["lng"]),
+            "expected_load": expected,
+            "actual_load": expected if node_type == "pole" else 0.0,
+            "parent_id": parent_id if parent_id else None,
+            "area": str(row["area"])
+        }
+        grid_data["nodes"].append(node_data)
+        
+        if parent_id:
+            grid_data["edges"].append({"from": parent_id, "to": node_id})
+            
+    # Initial load propagation
+    recompute_loads()
+    grid_data["uploaded"] = True
+    
+    return {"message": f"Successfully loaded {len(grid_data['nodes'])} grid nodes.", "edges_count": len(grid_data['edges'])}
+
 
 @app.get("/generate-grid")
-def generate_grid_api(city: str = "Delhi"):
-    # Load CSV data and recreate
-    load_data()
-    
-    nodes = []
-    nodes.extend([{**p, "type": "power_plant"} for p in grid_data["power_plants"]])
-    nodes.extend([{**t, "type": "transformer"} for t in grid_data["transformers"]])
-    nodes.extend([{**p, "type": "pole"} for p in grid_data["poles"]])
-
-    # Shift coordinates depending on city
-    lat_shift = 0
-    lng_shift = 0
-    
-    if city == "Mumbai":
-        lat_shift = 19.0760 - 28.6139  # -9.5379
-        lng_shift = 72.8777 - 77.2090  # -4.3313
-    elif city == "Bangalore":
-        lat_shift = 12.9716 - 28.6139  # -15.6423
-        lng_shift = 77.5946 - 77.2090  # 0.3856
+def generate_grid_api():
+    if not grid_data["uploaded"]:
+        raise HTTPException(status_code=400, detail="No dataset uploaded")
         
-    if lat_shift != 0 or lng_shift != 0:
-        for n in nodes:
-            n["lat"] += lat_shift
-            n["lng"] += lng_shift
-    
     return {
-        "nodes": nodes,
-        "edges": grid_data["edges"]
+        "nodes": grid_data["nodes"],
+        "edges": grid_data["edges"],
+        "source": "uploaded_file"
     }
 
 @app.post("/inject-theft")
 def inject_theft_api(req: TheftInjectionRequest):
+    if not grid_data["uploaded"]:
+        raise HTTPException(status_code=400, detail="No dataset uploaded")
+        
     affected = inject_theft(req.poles)
     return {
         "message": "Theft injected",
@@ -75,6 +110,8 @@ def inject_theft_api(req: TheftInjectionRequest):
 
 @app.get("/detect-theft")
 def detect_theft_api():
+    if not grid_data["uploaded"]:
+        raise HTTPException(status_code=400, detail="No dataset uploaded")
     return detect_theft()
 
 @app.get("/history")
@@ -83,20 +120,33 @@ def history_api():
 
 @app.get("/metrics")
 def metrics_api():
+    if not grid_data["uploaded"]:
+        return {"total_nodes": 0, "transformers": 0, "system_health": 100}
+    
     detection = detect_theft()
-    total_nodes = len(grid_data["power_plants"]) + len(grid_data["transformers"]) + len(grid_data["poles"])
     return {
-        "total_nodes": total_nodes,
-        "transformers": len(grid_data["transformers"]),
+        "total_nodes": len(grid_data["nodes"]),
+        "transformers": len([n for n in grid_data["nodes"] if n["type"].lower() == "transformer"]),
         "system_health": round(100 - detection["summary"]["loss_percentage"], 2)
     }
 
 @app.get("/alerts")
 def alerts_api():
+    if not grid_data["uploaded"]:
+        return []
     detection = detect_theft()
     return detection["theft_nodes"]
 
 @app.post("/detect")
 def trigger_detect_api():
-    # In this logic, it just re-runs the detection
+    if not grid_data["uploaded"]:
+        raise HTTPException(status_code=400, detail="No dataset uploaded")
     return detect_theft()
+
+@app.post("/reset")
+def reset_api():
+    grid_data["nodes"].clear()
+    grid_data["edges"].clear()
+    grid_data["history"].clear()
+    grid_data["uploaded"] = False
+    return {"message": "Grid data reset successfully."}
