@@ -41,10 +41,17 @@ const Sidebar = ({ metrics, onRefresh, activeTab, onTabChange }) => {
           <span className="material-symbols-outlined">grid_view</span>
           <span className="font-medium text-sm">Grid View</span>
         </button>
-        <a className="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-800/50 hover:text-blue-300 transition-all duration-300" href="#">
+        <button 
+          onClick={() => onTabChange("analytics")}
+          className={`w-full flex items-center gap-3 px-4 py-3 transition-all duration-300 rounded-xl ${
+            activeTab === "analytics" 
+            ? "bg-blue-500/10 text-blue-400 border-r-4 border-blue-500" 
+            : "text-slate-500 hover:bg-slate-800/50 hover:text-blue-300"
+          }`}
+        >
           <span className="material-symbols-outlined">analytics</span>
           <span className="font-medium text-sm">Analytics</span>
-        </a>
+        </button>
         <a className="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-800/50 hover:text-blue-300 transition-all duration-300" href="#">
           <span className="material-symbols-outlined">history</span>
           <span className="font-medium text-sm">History</span>

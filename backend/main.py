@@ -114,6 +114,12 @@ def detect_theft_api():
         raise HTTPException(status_code=400, detail="No dataset uploaded")
     return detect_theft()
 
+@app.get("/detect-anomaly")
+def detect_anomaly_api():
+    if not grid_data["uploaded"]:
+        raise HTTPException(status_code=400, detail="No dataset uploaded")
+    return detect_theft()
+
 @app.get("/history")
 def history_api():
     return grid_data["history"]

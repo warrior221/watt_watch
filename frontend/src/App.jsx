@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar';
 import MapCanvas from './components/MapCanvas';
 import GridView from './components/GridView';
 import DashboardView from './components/DashboardView';
+import AnalyticsView from './components/AnalyticsView';
 import IntelligencePanel from './components/IntelligencePanel';
 import Footer from './components/Footer';
 import { api } from './services/api';
@@ -17,6 +18,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentTab, setCurrentTab] = useState("grid");
+  const [detectionFull, setDetectionFull] = useState({});
 
   const loadAllData = useCallback(async (city = currentCity) => {
     try {
@@ -35,6 +37,7 @@ function App() {
       setMetrics(currentMetrics);
       setAlerts(currentAlerts);
       setSuspiciousTfs(detectionFull.suspicious_transformers || []);
+      setDetectionFull(detectionFull);
     } catch (err) {
       console.error('Fetch error:', err);
       setError('Connection failed. Please check backend status.');
@@ -168,11 +171,15 @@ function App() {
               suspiciousTfs={suspiciousTfs}
             />
           </>
-        ) : (
+        ) : currentTab === "dashboard" ? (
           <DashboardView 
             metrics={metrics}
             alerts={alerts}
             gridData={gridData}
+          />
+        ) : (
+          <AnalyticsView 
+            detectionData={detectionFull}
           />
         )}
       </main>
