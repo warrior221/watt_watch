@@ -98,6 +98,10 @@ const MapCanvas = ({ nodes, edges, theftNodes, suspiciousTfs, onInjectTheft, onG
               key={node.id}
               position={[node.lat, node.lng]}
               icon={createIcon(color, size, isTheft, isSuspicious)}
+              eventHandlers={{
+                mouseover: (e) => e.target.openPopup(),
+                mouseout: (e) => e.target.closePopup(),
+              }}
             >
               <Popup className="custom-popup">
                 <div className="bg-slate-900 text-white p-1 rounded-lg min-w-[150px]">
@@ -168,7 +172,7 @@ const MapCanvas = ({ nodes, edges, theftNodes, suspiciousTfs, onInjectTheft, onG
       </div>
 
       <div className="absolute top-6 left-6 z-[1000] glass-panel p-4 rounded-2xl border border-white/5 shadow-2xl">
-         <h1 className="text-xl font-black tracking-tighter text-blue-400 mb-1">PHANTOM<span className="text-white">NODE</span></h1>
+         <h1 className="text-xl font-black tracking-tighter text-blue-400 mb-1">WATT<span className="text-white"> WATCH</span></h1>
          <p className="text-[8px] font-bold uppercase tracking-[0.4em] text-slate-500">Grid Leaflet Dashboard v3.0</p>
       </div>
     </div>

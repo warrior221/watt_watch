@@ -40,7 +40,7 @@ function App() {
       setDetectionFull(detectionFull);
     } catch (err) {
       console.error('Fetch error:', err);
-      setError('Connection failed. Please check backend status.');
+      setError('no data of infrastructure');
     } finally {
       setLoading(false);
     }
@@ -100,7 +100,7 @@ function App() {
 
   return (
     <div className="overflow-hidden text-on-surface bg-[#0b1326] h-screen w-screen relative font-['Inter']">
-      <Header onUpload={handleUpload} />
+      <Header onUpload={handleUpload} currentCity={currentCity} onCityChange={handleCityChange} />
       <Sidebar 
         metrics={metrics} 
         onRefresh={handleManualDetection} 
@@ -125,7 +125,7 @@ function App() {
                    <span className="material-symbols-outlined text-blue-400 text-3xl absolute inset-0 flex items-center justify-center animate-pulse">radar</span>
                 </div>
                 <div className="text-center">
-                   <h3 className="text-blue-400 font-black uppercase tracking-[0.4em] text-sm mb-2">PhantomNode Monitoring</h3>
+                   <h3 className="text-blue-400 font-black uppercase tracking-[0.4em] text-sm mb-2">Watt Watch Monitoring</h3>
                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest animate-pulse">Synchronizing {currentCity} Grid...</p>
                 </div>
             </div>

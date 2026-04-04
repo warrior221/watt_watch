@@ -9,7 +9,7 @@ from injection import inject_theft, recompute_loads
 from detection import detect_theft
 from data_store import grid_data
 
-app = FastAPI(title="Uploadable City-Based Electricity Theft Detection System")
+app = FastAPI(title="Watt Watch Electricity Theft Detection System")
 
 app.add_middleware(
     CORSMiddleware,

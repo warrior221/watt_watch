@@ -53,13 +53,8 @@ const GridView = ({ nodes, edges, theftNodes, suspiciousTfs, currentCity }) => {
 
   // Center logic
   const mapCenter = useMemo(() => {
-    if (nodes && nodes.length > 0) {
-      const avgLat = nodes.reduce((sum, n) => sum + n.lat, 0) / nodes.length;
-      const avgLng = nodes.reduce((sum, n) => sum + n.lng, 0) / nodes.length;
-      return [avgLat, avgLng];
-    }
     return [cities[currentCity]?.lat || 28.6139, cities[currentCity]?.lng || 77.2090];
-  }, [nodes, currentCity]);
+  }, [currentCity]);
 
   return (
     <div className="w-full h-full relative bg-[#0b1326] overflow-hidden">
@@ -124,6 +119,7 @@ const GridView = ({ nodes, edges, theftNodes, suspiciousTfs, currentCity }) => {
               icon={createMarkerIcon(color, size, isTheft)}
               eventHandlers={{
                 mouseover: (e) => e.target.openPopup(),
+                mouseout: (e) => e.target.closePopup(),
               }}
             >
               <Popup>

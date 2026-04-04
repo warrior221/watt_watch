@@ -1,14 +1,24 @@
 import React from 'react';
 
-const Header = ({ onUpload }) => {
+const Header = ({ onUpload, currentCity, onCityChange }) => {
   return (
     <header className="fixed top-0 w-full z-50 flex justify-between items-center px-6 h-16 bg-slate-950/80 backdrop-blur-xl shadow-[0_0_40px_-10px_rgba(0,0,0,0.4)]">
       <div className="flex items-center gap-8">
-        <span className="text-xl font-black tracking-tighter text-blue-400">PhantomNode</span>
+        <span className="text-xl font-black tracking-tighter text-blue-400">Watt Watch</span>
         <nav className="hidden md:flex gap-6 items-center">
-          <a className="text-blue-400 border-b-2 border-blue-400 pb-1 font-semibold text-sm" href="#">Delhi</a>
-          <a className="text-slate-400 hover:text-blue-300 transition-colors text-sm" href="#">Mumbai</a>
-          <a className="text-slate-400 hover:text-blue-300 transition-colors text-sm" href="#">Bangalore</a>
+          {["Delhi", "Mumbai", "Bangalore"].map((city) => (
+            <button
+              key={city}
+              onClick={() => onCityChange(city)}
+              className={`pb-1 font-semibold text-sm transition-all duration-300 ${
+                currentCity === city 
+                ? "text-blue-400 border-b-2 border-blue-400" 
+                : "text-slate-400 hover:text-blue-300 border-b-2 border-transparent"
+              }`}
+            >
+              {city}
+            </button>
+          ))}
         </nav>
       </div>
       <div className="flex items-center gap-4">

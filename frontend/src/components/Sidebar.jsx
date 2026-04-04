@@ -13,7 +13,7 @@ const Sidebar = ({ metrics, onRefresh, activeTab, onTabChange }) => {
             <span className="material-symbols-outlined text-white" style={{ fontVariationSettings: "'FILL' 1" }}>security</span>
           </div>
           <div>
-            <h2 className="text-on-surface font-black text-sm leading-none tracking-tight">PhantomNode</h2>
+            <h2 className="text-on-surface font-black text-sm leading-none tracking-tight">Watt Watch</h2>
             <p className="text-[10px] text-blue-400 font-bold uppercase tracking-[0.2em] mt-1">Sentinel Vigil Active</p>
           </div>
         </div>
