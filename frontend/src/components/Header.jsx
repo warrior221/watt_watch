@@ -1,4 +1,5 @@
 import React from 'react';
+import { supabase } from '../supabaseClient';
 
 const Header = ({ onUpload, currentCity, onCityChange }) => {
   return (
@@ -37,6 +38,13 @@ const Header = ({ onUpload, currentCity, onCityChange }) => {
           </button>
           <button className="bg-surface-container-highest hover:bg-surface-bright text-on-surface p-2 rounded-xl transition-all scale-95 duration-200">
             <span className="material-symbols-outlined text-xl">notifications</span>
+          </button>
+          <button 
+            onClick={() => supabase.auth.signOut()} 
+            className="bg-red-500/10 hover:bg-red-500/20 text-red-400 p-2 rounded-xl transition-all scale-95 duration-200 border border-red-500/20"
+            title="Logout"
+          >
+            <span className="material-symbols-outlined text-xl">logout</span>
           </button>
           <div className="h-10 w-10 rounded-full bg-blue-500/20 border border-blue-400/30 overflow-hidden">
             <img alt="Operator Profile" className="w-full h-full object-cover" data-alt="close up of a professional technical operator avatar with modern glasses and neutral expression" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFXkIzBXVU5eLG_35S1N8YB47cyLFHEXDKxxAztuFYeyh-lFG3gRsHpM64s0wBZZVEceiwbnh0My9EDYAPzbcEpqXhY95amERzyEJl4qE1I_wLX-Zw7CvdVS5xHUTv-ED5WlKe8hMX3h-RbEawltf4Z0OfdyQV0e9ikHnVo1NpI8laktZtCODvgcrvC7-cm0SY5-bzAxb0B1mWgtEZ1Px_u8j5Z_TFiw3kotsXNpC35EMRfk6agR3JQ2C8DTQtHKzvcuSgdzXz5U_1"/>

@@ -7,7 +7,10 @@ import DashboardView from './components/DashboardView';
 import AnalyticsView from './components/AnalyticsView';
 import IntelligencePanel from './components/IntelligencePanel';
 import Footer from './components/Footer';
+import LandingPage from './components/LandingPage';
+import LoginPage from './components/LoginPage';
 import { api } from './services/api';
+import { supabase } from './supabaseClient';
 
 function App() {
   const [currentCity, setCurrentCity] = useState("Delhi");
@@ -19,6 +22,22 @@ function App() {
   const [error, setError] = useState(null);
   const [currentTab, setCurrentTab] = useState("grid");
   const [detectionFull, setDetectionFull] = useState({});
+  const [hasLaunched, setHasLaunched] = useState(false);
+  const [session, setSession] = useState(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const loadAllData = useCallback(async (city = currentCity) => {
     try {
@@ -97,6 +116,14 @@ function App() {
       setLoading(false);
     }
   };
+
+  if (!hasLaunched) {
+    return <LandingPage onLaunch={() => setHasLaunched(true)} />;
+  }
+
+  if (!session) {
+    return <LoginPage />;
+  }
 
   return (
     <div className="overflow-hidden text-on-surface bg-[#0b1326] h-screen w-screen relative font-['Inter']">
