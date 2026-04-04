@@ -1,7 +1,7 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 import pandas as pd
 import io
 import os
@@ -131,20 +131,21 @@ def inject_theft_api(req: TheftInjectionRequest):
     }
 
 @app.get("/detect-theft")
-def detect_theft_api():
+def detect_theft_api(email: Optional[str] = Query(default=None, description="User email for alert routing")):
     if not grid_data["uploaded"]:
         raise HTTPException(status_code=400, detail="No dataset uploaded")
-    return detect_theft()
+    return detect_theft(recipient_email=email)
 
 @app.get("/detect-anomaly")
-def detect_anomaly_api():
+def detect_anomaly_api(email: Optional[str] = Query(default=None, description="User email for alert routing")):
     if not grid_data["uploaded"]:
-        raise HTTPException(status_code=400, detail="No dataset uploaded")
-    return detect_theft()
+        return {"anomalies": [], "theft_nodes": [], "summary": {}}
+    result = detect_theft(recipient_email=email)
+    return result
 
 @app.get("/history")
 def history_api():
-    return grid_data["history"]
+    return list(reversed(grid_data["history"]))  # newest first
 
 @app.get("/metrics")
 def metrics_api():
@@ -166,10 +167,10 @@ def alerts_api():
     return detection["theft_nodes"]
 
 @app.post("/detect")
-def trigger_detect_api():
+def trigger_detect_api(email: Optional[str] = Query(default=None, description="User email for alert routing")):
     if not grid_data["uploaded"]:
         raise HTTPException(status_code=400, detail="No dataset uploaded")
-    return detect_theft(force=True)
+    return detect_theft(force=True, recipient_email=email)
 
 @app.post("/reset")
 def reset_api():
