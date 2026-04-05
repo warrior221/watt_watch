@@ -1,16 +1,9 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Query
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List, Optional
-import pandas as pd
-import io
-import os
+from services.tg_service import get_nodes, check_connection, run_detection, update_load_from_csv
+from db.tigergraph import get_connection
 
-from injection import inject_theft, recompute_loads
-from detection import detect_theft
-from data_store import grid_data
-
-app = FastAPI(title="Watt Watch Electricity Theft Detection System")
+app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,163 +13,56 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class TheftInjectionRequest(BaseModel):
-    poles: List[str]
-
-@app.get("/")
-def read_root():
-    return {"status": "online"}
-
-@app.post("/upload-data")
-async def upload_data(file: UploadFile = File(...)):
-    # Read the file contents
-    contents = await file.read()
-    
-    # Parse CSV
+@app.get("/tg-test")
+def test_connection():
     try:
-        df = pd.read_csv(io.BytesIO(contents))
+        return check_connection()
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"CSV Parsing Error: {str(e)}")
-    
-    # Validate minimal matching
-    required_cols = {"id", "lat", "lng"}
-    # Normalize column names to lowercase for flexibility
-    df.columns = [c.lower().strip() for c in df.columns]
-    
-    if not required_cols.issubset(set(df.columns)):
-        missing = required_cols - set(df.columns)
-        raise HTTPException(status_code=400, detail=f"Missing essential columns: {', '.join(missing)}")
-    
-    # Reset storage
-    grid_data["nodes"].clear()
-    grid_data["edges"].clear()
-    grid_data["history"].clear()
-    grid_data["detection_cache"] = None
-    
-    # Read and store nodes and edges efficiently
-    df = df.fillna("")
-    records = df.to_dict('records')
-    
-    for row in records:
-        node_id = str(row.get("id", ""))
-        if not node_id:
-            continue
-            
-        # Try to guess type or default
-        node_type = str(row.get("type", "")).strip().lower()
-        if not node_type:
-            if "transformer" in node_id.lower(): node_type = "transformer"
-            elif "powerplant" in node_id.lower() or "power_plant" in node_id.lower(): node_type = "powerplant"
-            else: node_type = "pole"
-            
-        if node_type == "power_plant": node_type = "powerplant"
+        return {"error": str(e)}
+
+@app.get("/debug-tg")
+def debug_tigergraph():
+    try:
+        conn_status = check_connection()
+        data = get_nodes() if conn_status.get("status") == "ok" else None
         
-        parent_id = str(row.get("parent_id", "")).strip()
-        expected = 0.0
-        try:
-            val = row.get("expected_load", 0)
-            if str(val) != "" and val is not None:
-                expected = float(val)
-        except ValueError:
-            pass
-            
-        try:
-            lat = float(row.get("lat", 0))
-            lng = float(row.get("lng", 0))
-        except (ValueError, TypeError):
-            continue
-            
-        node_data = {
-            "id": node_id,
-            "type": node_type,
-            "lat": lat,
-            "lng": lng,
-            "expected_load": expected,
-            "actual_load": expected if node_type == "pole" else 0.0,
-            "parent_id": parent_id if parent_id else None,
-            "area": str(row.get("area", "General"))
+        return {
+            "connection": conn_status,
+            "data": data
         }
-        grid_data["nodes"].append(node_data)
-        
-        if parent_id:
-            grid_data["edges"].append({"from": parent_id, "to": node_id})
-            
-    # Initial load propagation
-    recompute_loads()
-    grid_data["uploaded"] = True
-    detect_theft(force=True) # Pre-prime cache
-    
-    return {"message": f"Successfully loaded {len(grid_data['nodes'])} nodes.", "edges_count": len(grid_data['edges'])}
+    except Exception as e:
+        return {"error": str(e)}
 
-@app.get("/generate-grid")
-def generate_grid_api():
-    if not grid_data["uploaded"]:
-        raise HTTPException(status_code=400, detail="No dataset uploaded")
-        
-    return {
-        "nodes": grid_data["nodes"],
-        "edges": grid_data["edges"],
-        "source": "uploaded_file"
-    }
-
-@app.post("/inject-theft")
-def inject_theft_api(req: TheftInjectionRequest):
-    if not grid_data["uploaded"]:
-        raise HTTPException(status_code=400, detail="No dataset uploaded")
-        
-    affected = inject_theft(req.poles)
-    return {
-        "message": "Theft injected",
-        "affected_poles": affected
-    }
-
-@app.get("/detect-theft")
-def detect_theft_api(email: Optional[str] = Query(default=None, description="User email for alert routing")):
-    if not grid_data["uploaded"]:
-        raise HTTPException(status_code=400, detail="No dataset uploaded")
-    return detect_theft(recipient_email=email)
-
-@app.get("/detect-anomaly")
-def detect_anomaly_api(email: Optional[str] = Query(default=None, description="User email for alert routing")):
-    if not grid_data["uploaded"]:
-        return {"anomalies": [], "theft_nodes": [], "summary": {}}
-    result = detect_theft(recipient_email=email)
-    return result
-
-@app.get("/history")
-def history_api():
-    return list(reversed(grid_data["history"]))  # newest first
-
-@app.get("/metrics")
-def metrics_api():
-    if not grid_data["uploaded"]:
-        return {"total_nodes": 0, "transformers": 0, "system_health": 100}
-    
-    detection = detect_theft()
-    return {
-        "total_nodes": len(grid_data["nodes"]),
-        "transformers": len([n for n in grid_data["nodes"] if n["type"].lower() == "transformer"]),
-        "system_health": round(100 - detection["summary"]["loss_percentage"], 2)
-    }
-
-@app.get("/alerts")
-def alerts_api():
-    if not grid_data["uploaded"]:
-        return []
-    detection = detect_theft()
-    return detection["theft_nodes"]
+@app.get("/nodes")
+def fetch_nodes():
+    try:
+        return get_nodes()
+    except Exception as e:
+        return {"error": str(e)}
 
 @app.post("/detect")
-def trigger_detect_api(email: Optional[str] = Query(default=None, description="User email for alert routing")):
-    if not grid_data["uploaded"]:
-        raise HTTPException(status_code=400, detail="No dataset uploaded")
-    return detect_theft(force=True, recipient_email=email)
+def detect_anomalies():
+    try:
+        return run_detection()
+    except Exception as e:
+        return {"error": str(e)}
 
-@app.post("/reset")
-def reset_api():
-    grid_data["nodes"].clear()
-    grid_data["edges"].clear()
-    grid_data["history"].clear()
-    grid_data["uploaded"] = False
-    grid_data["detection_cache"] = None
-    return {"message": "Grid data reset successfully."}
+@app.post("/upload-load")
+async def upload_load(file: UploadFile = File(...)):
+    try:
+        content = await file.read()
+        return update_load_from_csv(content.decode("utf-8"))
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/generate-data")
+def generate_sample_data():
+    try:
+        from ml.generator import generate_grid_data
+        # Bulk load now handles mapping data correctly
+        from ml.bulk_loader import bulk_loader
+        generate_grid_data()
+        bulk_loader()
+        return {"status": "Data generation and bulk load complete."}
+    except Exception as e:
+        return {"error": str(e)}
