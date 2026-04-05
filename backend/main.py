@@ -1,10 +1,15 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+import logging
 from services.tg_service import get_nodes, check_connection, run_detection, update_load_from_csv
-from db.tigergraph import get_connection
 
-app = FastAPI()
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
+app = FastAPI(title="Watt Watch Core API", version="1.1.0")
+
+# High-performance Cross-Origin Resource Sharing
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,54 +20,47 @@ app.add_middleware(
 
 @app.get("/tg-test")
 def test_connection():
-    try:
-        return check_connection()
-    except Exception as e:
-        return {"error": str(e)}
-
-@app.get("/debug-tg")
-def debug_tigergraph():
-    try:
-        conn_status = check_connection()
-        data = get_nodes() if conn_status.get("status") == "ok" else None
-        
-        return {
-            "connection": conn_status,
-            "data": data
-        }
-    except Exception as e:
-        return {"error": str(e)}
+    # Dynamic TigerGraph health check
+    return check_connection()
 
 @app.get("/nodes")
 def fetch_nodes():
-    try:
-        return get_nodes()
-    except Exception as e:
-        return {"error": str(e)}
+    # Main grid data retrieval endpoint
+    data = get_nodes()
+    if isinstance(data, dict) and "error" in data:
+        return data
+    return {"nodes": data}
 
 @app.post("/detect")
 def detect_anomalies():
-    try:
-        return run_detection()
-    except Exception as e:
-        return {"error": str(e)}
+    # Hybrid Detection Engine (ML/Ratio based)
+    return run_detection()
 
 @app.post("/upload-load")
 async def upload_load(file: UploadFile = File(...)):
+    # Stream telemetry data from external CSVs
     try:
         content = await file.read()
         return update_load_from_csv(content.decode("utf-8"))
     except Exception as e:
+        logger.error(f"Upload-load failure: {e}")
         return {"error": str(e)}
 
-@app.get("/generate-data")
-def generate_sample_data():
+@app.get("/reset-grid")
+def reset_grid():
+    # Infrastructure Lifecycle Management
     try:
         from ml.generator import generate_grid_data
-        # Bulk load now handles mapping data correctly
         from ml.bulk_loader import bulk_loader
+        from db.tigergraph import get_connection
+        
+        conn = get_connection()
+        logger.info("Purging grid data...")
+        conn.delVertices('Pole')
+        
         generate_grid_data()
         bulk_loader()
-        return {"status": "Data generation and bulk load complete."}
+        return {"status": "success", "message": "Grid infrastructure reset and reloaded with 7,000 poles."}
     except Exception as e:
+        logger.error(f"Reset failure: {e}")
         return {"error": str(e)}

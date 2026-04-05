@@ -1,5 +1,0 @@
-id,lat,lng,expected_load,parent_id,area
-Rohini_Pole_1,28.7421,77.0832,2.5,Rohini_Transformer_1,Rohini
-Rohini_Pole_2,28.7425,77.0835,3.0,Rohini_Transformer_1,Rohini
-Saket_Pole_1,28.5244,77.1955,2.0,Saket_Transformer_1,Saket
-Saket_Pole_2,28.5248,77.1958,2.8,Saket_Transformer_1,Saket

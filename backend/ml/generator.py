@@ -3,7 +3,7 @@ import numpy as np
 import os
 
 # CONFIG
-NUM_NODES = 20000
+NUM_NODES = 7000
 # Ensure we map to the root data folder
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUTPUT_FILE = os.path.join(BASE_DIR, "data", "grid_data.csv")

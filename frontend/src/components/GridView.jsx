@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from 'react-leaflet';
-import L from 'leaflet';
+import React, { useMemo, useEffect } from 'react';
+import { MapContainer, TileLayer, CircleMarker, Polyline, Tooltip, useMap } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import 'leaflet/dist/leaflet.css';
 
 const cities = {
@@ -9,183 +9,124 @@ const cities = {
   Bangalore: { lat: 12.9716, lng: 77.5946 }
 };
 
-// Single Map Controller to handle initial panning, resizing, and flying to anomalies smoothly
-function MapController({ center, zoom = 12, targetNode }) {
+// DELHI BOUNDS for safety
+const DELHI_BOUNDS = [[28.4, 76.8], [28.9, 77.4]];
+
+function MapController({ center, targetNode }) {
   const map = useMap();
-  
-  React.useEffect(() => {
-    // Timeout helps invalidate size properly after DOM and Leaflet have fully rendered
-    const timer = setTimeout(() => {
-      map.invalidateSize();
-    }, 200);
-
+  useEffect(() => {
+    map.invalidateSize();
     if (targetNode) {
-      map.flyTo([targetNode.lat, targetNode.lng], 16, {
-        duration: 1.5,
-        animate: true,
-        easeLinearity: 0.25
-      });
+      map.flyTo([targetNode.lat, targetNode.lng], 16, { duration: 1.5 });
     } else {
-      map.setView(center, zoom);
+      map.setView(center, 12);
     }
-    
-    return () => clearTimeout(timer);
-  }, [center, zoom, targetNode, map]);
-
+  }, [center, targetNode, map]);
   return null;
 }
 
-// Marker Icon Factory
-const createMarkerIcon = (color, size, isTheft) => {
-  const glowStyle = isTheft ? 'box-shadow: 0 0 20px #f43f5e, 0 0 10px #f43f5e inset;' : 'box-shadow: 0 0 10px rgba(0,0,0,0.5);';
-  
-  return L.divIcon({
-    className: 'grid-marker-icon',
-    html: `<div style="
-        width: ${size}px; 
-        height: ${size}px; 
-        background-color: ${color}; 
-        border: 2px solid white;
-        border-radius: 50%;
-        ${glowStyle}
-        position: relative;
-      ">
-        ${isTheft ? '<div class="absolute inset-0 rounded-full animate-ping bg-red-500 opacity-75"></div>' : ''}
-      </div>`,
-    iconSize: [size, size],
-    iconAnchor: [size/2, size/2],
-    popupAnchor: [0, -size/2],
-  });
-};
+const GridView = ({ nodes, edges, theftNodes, currentCity, focussedNodeId }) => {
+  const focussedNode = useMemo(() => nodes?.find(n => (n.v_id || n.id) === focussedNodeId), [nodes, focussedNodeId]);
+  const mapCenter = useMemo(() => [cities[currentCity]?.lat || 28.6139, cities[currentCity]?.lng || 77.2090], [currentCity]);
 
-const GridView = ({ nodes, edges, theftNodes, suspiciousTfs, currentCity, focussedNodeId }) => {
-  
-  // Find the focussed node object if any
-  const focussedNode = useMemo(() => 
-    nodes?.find(n => n.id === focussedNodeId), 
-    [nodes, focussedNodeId]
-  );
+  // Color Mapping Logic
+  const getNodeStyles = (node) => {
+    const type = (node.attributes?.type || node.type || "").toLowerCase();
+    const status = node.attributes?.status || node.status || 'default';
+    const isfocussed = focussedNodeId === (node.v_id || node.id);
 
-  // Center logic
-  const mapCenter = useMemo(() => {
-    return [cities[currentCity]?.lat || 28.6139, cities[currentCity]?.lng || 77.2090];
-  }, [currentCity]);
-  
-  // Index nodes for high-speed edge coordinate lookup
-  const nodeMap = useMemo(() => {
-    const map = {};
-    nodes?.forEach(n => map[n.id] = n);
-    return map;
-  }, [nodes]);
+    if (type.includes('power')) return { color: '#10b981', radius: 12, fillOpacity: 0.8 };
+    if (type.includes('transformer')) return { color: '#f59e0b', radius: 8, fillOpacity: 0.7 };
+    
+    // Default Pole colors based on anomaly status
+    let color = '#3b82f6'; // Blue
+    if (status === 'normal') color = '#22c55e';
+    if (status === 'medium_anomaly') color = '#fbbf24';
+    if (status === 'high_anomaly') color = '#f43f5e';
+    
+    return { 
+      color, 
+      radius: isfocussed ? 10 : 5, 
+      fillOpacity: isfocussed ? 1 : 0.6,
+      weight: isfocussed ? 3 : 1
+    };
+  };
 
   return (
     <div className="w-full h-full relative bg-[#0b1326] overflow-hidden">
       <MapContainer
         center={mapCenter}
         zoom={12}
-        scrollWheelZoom={true}
         style={{ height: "100%", width: "100%" }}
         zoomControl={false}
+        preferCanvas={true}
+        maxBounds={currentCity === 'Delhi' ? DELHI_BOUNDS : null}
       >
         <MapController center={mapCenter} targetNode={focussedNode} />
-        
-        <TileLayer 
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          attribution='&copy; OpenStreetMap contributors &copy; CARTO'
-        />
+        <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
 
-        {/* Connections (Edges) */}
-        {edges?.map((edge, idx) => {
-          const fromNode = nodeMap[edge.from];
-          const toNode = nodeMap[edge.to];
-          if (!fromNode || !toNode) return null;
-          
-          return (
-            <Polyline 
-              key={`edge-${idx}`}
-              positions={[[fromNode.lat, fromNode.lng], [toNode.lat, toNode.lng]]}
-              pathOptions={{ 
-                color: '#22d3ee', 
-                weight: 2, 
-                opacity: 0.3, 
-                dashArray: '3, 7'
-              }}
-            />
-          );
-        })}
+        <MarkerClusterGroup chunkedLoading maxClusterRadius={40}>
+          {nodes?.map((node) => {
+            const lat = node.attributes?.lat || node.lat;
+            const lng = node.attributes?.lng || node.lng;
+            const v_id = node.v_id || node.id;
+            if (!lat || !lng) return null;
 
-        {/* Grid Nodes */}
-        {nodes?.map((node) => {
-          const type = (node.type || "").toLowerCase();
-          const isTheft = theftNodes?.some(t => t.id === node.id);
-          const isSuspicious = suspiciousTfs?.includes(node.id);
-          const isFocussed = focussedNodeId === node.id;
-          
-          let color = '#3b82f6'; // Default Blue
-          let size = 10;
+            const styles = getNodeStyles(node);
+            const load = node.attributes?.load1 || node.load || 0;
+            const expected = node.attributes?.expected_load || 0;
+            const status = node.attributes?.status || node.status || 'default';
 
-          if (type === 'powerplant' || type === 'power_plant') {
-            color = '#22c55e'; // Green
-            size = 28;
-          } else if (type === 'transformer') {
-            color = isSuspicious ? '#f97316' : '#fb923c'; // Orange
-            size = 18;
-          } else if (type === 'pole') {
-            color = isTheft ? '#f43f5e' : '#3b82f6'; // Blue (Red if theft)
-            size = 10;
-          }
-
-          return (
-            <Marker
-              key={node.id}
-              position={[node.lat, node.lng]}
-              icon={createMarkerIcon(color, isFocussed ? size * 1.8 : size, isTheft || isFocussed)}
-              eventHandlers={{
-                mouseover: (e) => e.target.openPopup(),
-                mouseout: (e) => e.target.closePopup(),
-              }}
-            >
-              <Popup>
-                <div className="data-font p-2 min-w-[140px] bg-slate-900 text-white rounded">
-                  <div className="flex justify-between items-center border-b border-white/10 pb-1 mb-2">
-                    <span className="text-[9px] font-black uppercase text-blue-400 tracking-widest">{type}</span>
-                    <span className={`w-2 h-2 rounded-full ${isTheft ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`}></span>
-                  </div>
-                  <h4 className="text-sm font-bold m-0">{node.id}</h4>
-                  <p className="text-[10px] text-slate-400 uppercase mt-1">{node.area}</p>
-                  
-                  <div className="mt-3 grid grid-cols-2 gap-2 text-[10px]">
-                    <div className="bg-white/5 p-1.5 rounded">
-                      <span className="text-[8px] text-slate-500 block">EXPECT</span>
-                      <span className="font-bold">{node.expected_load || 0} kW</span>
+            return (
+              <CircleMarker
+                key={v_id}
+                center={[lat, lng]}
+                radius={styles.radius}
+                pathOptions={{
+                  fillColor: styles.color,
+                  color: styles.color,
+                  weight: styles.weight,
+                  fillOpacity: styles.fillOpacity
+                }}
+              >
+                <Tooltip sticky>
+                  <div className="p-2 min-w-[140px] text-slate-900 font-bold">
+                    <p className="border-b border-slate-200 mb-1 pb-1 text-blue-600 text-[10px]">ID: {v_id}</p>
+                    <div className="flex justify-between text-[9px] mb-1">
+                      <span>LOAD:</span> <span>{Number(load).toFixed(1)} kW</span>
                     </div>
-                    <div className="bg-white/5 p-1.5 rounded">
-                      <span className="text-[8px] text-slate-500 block">ACTUAL</span>
-                      <span className={`font-bold ${isTheft ? 'text-red-400' : 'text-white'}`}>{node.actual_load || 0} kW</span>
+                    <div className="flex justify-between text-[9px] mb-2">
+                       <span>EXPECT:</span> <span>{Number(expected).toFixed(1)} kW</span>
+                    </div>
+                    <div className={`text-center py-1 rounded text-[8px] uppercase tracking-tighter ${
+                      status.includes('high') ? 'bg-red-100 text-red-600' : 
+                      status.includes('normal') ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'
+                    }`}>
+                      {status.replace('_', ' ')}
                     </div>
                   </div>
-                </div>
-              </Popup>
-            </Marker>
-          );
-        })}
+                </Tooltip>
+              </CircleMarker>
+            );
+          })}
+        </MarkerClusterGroup>
       </MapContainer>
 
-      {/* Floating Legend */}
-      <div className="absolute top-6 left-6 z-[1000] glass-panel p-4 rounded-2xl border border-white/5 shadow-2xl">
+      {/* Floating View Indicator */}
+      <div className="absolute top-6 left-6 z-[1000] bg-slate-900/80 backdrop-blur-xl p-4 rounded-2xl border border-white/5 shadow-2xl">
          <h1 className="text-xl font-black tracking-tighter text-blue-400 mb-1">GRID<span className="text-white">VIEW</span></h1>
-         <div className="space-y-2 mt-4">
+         <div className="space-y-1.5 mt-3">
             <div className="flex items-center gap-2">
-               <div className="w-3 h-3 rounded-full bg-green-500"></div>
-               <span className="text-[8px] font-bold uppercase tracking-widest text-slate-400">Power Plant</span>
+               <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+               <span className="text-[8px] font-bold uppercase text-slate-400">Normal</span>
             </div>
             <div className="flex items-center gap-2">
-               <div className="w-3 h-3 rounded-full bg-orange-500"></div>
-               <span className="text-[8px] font-bold uppercase tracking-widest text-slate-400">Transformer</span>
+               <div className="w-2 h-2 rounded-full bg-red-500"></div>
+               <span className="text-[8px] font-bold uppercase text-slate-400">High Risk</span>
             </div>
             <div className="flex items-center gap-2">
-               <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-               <span className="text-[8px] font-bold uppercase tracking-widest text-slate-400">Pole</span>
+               <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+               <span className="text-[8px] font-bold uppercase text-slate-400">Static Pole</span>
             </div>
          </div>
       </div>

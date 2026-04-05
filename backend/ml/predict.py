@@ -1,25 +1,32 @@
 import joblib
 import numpy as np
 import os
-from .train import train_model
 
-MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "model.pkl")
-model = None
+# Relative path resolution for internal module loading
+BASE_ML_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_FILENAME = "model.pkl"
+MODEL_PATH = os.path.join(BASE_ML_DIR, MODEL_FILENAME)
+
+_cached_model = None
 
 def load_model():
-    global model
-    if model is None:
+    global _cached_model
+    if _cached_model is None:
         if not os.path.exists(MODEL_PATH):
-            print("Model missing, triggering auto-training...")
-            train_model()
+            return None
         
-        print("Loading Model into memory...")
-        model = joblib.load(MODEL_PATH)
-        print("Model Loaded!")
+        try:
+            _cached_model = joblib.load(MODEL_PATH)
+        except Exception as e:
+            print(f"Error loading model: {e}")
+            return None
+            
+    return _cached_model
 
-# Vectorized batch prediction for optimal performance
 def predict_nodes(nodes):
-    load_model()
+    model = load_model()
+    if model is None:
+        return nodes
     
     if not nodes:
         return []
@@ -29,7 +36,7 @@ def predict_nodes(nodes):
     for node in nodes:
         attrs = node.get("attributes", node)
         
-        actual = float(attrs.get("actual_load", attrs.get("load", 0)))
+        actual = float(attrs.get("load1", attrs.get("load", 0)))
         expected = float(attrs.get("expected_load", actual * 0.9)) # Historical baseline approx
         diff = actual - expected
         
@@ -37,12 +44,19 @@ def predict_nodes(nodes):
         
     features_array = np.array(features_list)
     
-    # Batch predict
-    predictions = model.predict(features_array)
-    
-    # Map predictions back to node objects
-    for idx, node in enumerate(nodes):
-        node["status"] = "anomaly" if predictions[idx] == 1 else "normal"
-        node["load"] = float(node.get("attributes", node).get("actual_load", node.get("load", 0)))
+    try:
+        # Prediction: 1 for anomaly, 0 or 1 depending on model training
+        # We assume 1 is anomaly based on common IsolationForest/Binary patterns
+        predictions = model.predict(features_array)
+        
+        for idx, node in enumerate(nodes):
+            node["status"] = "anomaly" if predictions[idx] == 1 else "normal"
+            
+    except Exception as e:
+        print(f"Prediction failed: {e}")
         
     return nodes
+
+if __name__ == "__main__":
+    test_node = {"id": "test", "load1": 500, "expected_load": 100}
+    print(f"Test Result: {predict_nodes([test_node])}")

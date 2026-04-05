@@ -1,5 +1,4 @@
 import React, { useState, useRef } from 'react';
-import { supabase } from '../supabaseClient';
 import ProfileDropdown from './ProfileDropdown';
 
 const Header = ({ onUpload, currentCity, onCityChange, onOpenSettings, onOpenAlerts, alertCount = 0, session }) => {
