@@ -28,7 +28,7 @@ const DashboardView = ({ metrics, alerts, gridData }) => {
             <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Active Transformers</p>
           </div>
           <p className="text-4xl font-black data-font mt-4 text-white">
-            {gridData.nodes?.filter(n => n.type.toLowerCase().includes('transformer')).length}
+            {gridData.nodes?.filter(n => (n.attributes?.type || n.type || "").toLowerCase().includes('transformer')).length}
           </p>
         </div>
 

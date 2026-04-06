@@ -1,87 +1,94 @@
-# Watt Watch: Electricity Theft Detection & Smart Grid Analytics
+# ⚡ Watt Watch Pro: Sentinel Vigil ⚡
+### Autonomous Smart Grid Monitoring & Anomaly Detection System
 
-Watt Watch is a sophisticated, real-time platform designed to monitor city-scale smart grids, identify power distribution irregularities, and visualize electricity theft with high-confidence geospatial tracking.
-
----
-
-## ⚡ Core Architecture & Engineering
-
-The system operates on a complex hierarchical graph model: **Power Plant → Transformer → Pole**. 
-Data integrity is maintained through a recursive **Load Propagation Layer** in the Python backend, ensuring that any single kW discrepancy at the edge (pole) is accurately mapped through its parent transformer and into the city grid's aggregate health reports.
-
-### 🧠 Smart Confidence Scoring Engine (Version 2.0)
-Unlike simple threshold-based detection, Watt Watch now utilizes a **Weighted Multi-Factor Anomaly Algorithm**:
-$$Confidence = (0.4 \times Node Deviation) + (0.3 \times Transformer Health) + (0.3 \times Historical Persistence)$$
-
-*   **Node Deviation (40%):** The raw mismatch percentage of a single pole.
-*   **Infrastructure Context (30%):** The overall health of the parent transformer—nodes are penalized more if the entire transformer tree shows aggregate leakage.
-*   **Time Series Recurrence (30%):** An automated scoring system that tracks how many times a node has been flagged in recent detection cycles.
+Watt Watch Pro is a production-grade **Graph AI** platform designed to monitor national energy infrastructure, detect electricity theft, and visualize 7,000+ infrastructure points in real-time. Built specifically for high-concurrency grid operations, it combines the pathfinding power of **TigerGraph** with the predictive precision of **Isolation Forest ML**.
 
 ---
 
-## 🛠️ Key Features & Views
+## 🏗️ Project Architecture (A to Z Working)
 
-### 📍 Interactive Grid Visualization (Leaflet.js)
-A custom-built **MapController** manages smooth, cinematic `flyTo` transitions. When an anomaly is detected, the map automatically tracks the location with appropriate zoom levels while maintaining a consistent dark-theme UI.
+The system operates across four primary layers ensuring a seamless "Data to Decision" pipeline:
 
-### 📊 Intelligence Panels & Alerts
-*   **Anomaly Intelligence Panel:** A floating, scrollable sidebar that lists suspicious sources (transformers) and active thefts, providing real-time load differential statistics (Expected vs. Actual) formatted to 2 decimal places.
-*   **Theft Injection Simulator:** A sandbox feature allowing users to "ZAP" random poles with artificial load spikes to test system responsiveness.
-*   **Automated SMTP Sentinel:** When a high-severity theft is detected, the backend autonomously triggers a professional Gmail-alert dispatch to the logged-in user's email ID, providing coordinates, Confidence Score, and severity.
-
-### 📈 Comprehensive Analytics Hub (Recharts)
-*   **Load Analysis:** Bar charts mapping area-wise leakage.
-*   **Integrity Gauges:** Pie charts reflecting total grid efficiency vs. system-wide losses.
-*   **Critical Vulnerability Reports:** Highlights the worst-performing city sectors.
-
-### 🆕 Advanced Grid Management Views
-*   **System Health:** A detailed, tree-based drill-down of every transformer and connected pole's performance.
-*   **History Vault:** A centralized log of every anomaly ever recorded, fully filterable and searchable.
-*   **Support & Documentation:** Built-in guidance for field enforcement teams.
+1.  **Infrastructure Generation**: The `ml/generator.py` script synthesizes 7,000 unique grid poles across the Delhi Hub, calculating baseline "Expected Loads" based on demographic density.
+2.  **Graph Ingestion**: Using `ml/bulk_loader.py`, this data is injected into a scalable **TigerGraph Cloud** instance, creating a complex relational map between Power Plants, Transformers, and Poles.
+3.  **Hybrid Detection Engine**: The backend service retrieves live telemetry and processes it through a **Hybrid Anomaly Engine**:
+    -   **ML Layer**: An `Isolation Forest` model (trained by `ml/train.py`) identifies non-linear deviations.
+    -   **Heuristic Layer**: A ratio-based logic (`actual / expected > 1.5`) serves as a robust fallback.
+4.  **Sentinel Map & Dashboard**: A high-performance **React + Leaflet** frontend renders the 7,000 nodes using GPU-accelerated Canvas, allowing operators to filter risk levels instantly.
 
 ---
 
-## 🚀 Performance Optimizations
+## 🤖 ML Model Technical Specs
 
-1.  **Network Request Consolidation:** The frontend has been optimized to batch data fetching, cutting browser network load by **50%** while maintaining real-time accuracy.
-2.  **O(1) Data Traversal:** Back-end load recomputation uses `defaultdict` hashing for parent-child relationship mappings, ensuring $O(N)$ linear performance even as the grid scales to thousands of nodes.
-3.  **UI Glassmorphism & Z-Index Management:** Precision CSS layering ensures intelligence panels float above the Leaflet map's interaction layers, providing a premium, glitch-free software experience.
-4.  **Responsive Fluidity:** m-CSS constraints ensure that even high-density analytics dashboards render perfectly on laptop resolutions (13-16") without label clipping or layout overflow.
-
----
-
-## ⚙️ Technical Stack
-
-*   **Frontend:** React (Vite), TailwindCSS, Leaflet.js, Recharts, Lucide Icons, Material Symbols.
-*   **Backend:** Python 3.10+, FastAPI (Asynchronous), Pandas, Pydantic.
-*   **Database/Auth:** Supabase (Auth/Sessions & Persistence).
-*   **Deployment/Ops:** Uvicorn (ASGI), Dotenv (Environmental Security).
+The project utilizes an **Isolation Forest** (Anomaly Detection) approach:
+-   **Features**: `[Expected_Load, Actual_Load, Load_Mismatch]`
+-   **Logic**: Unlike traditional clustering, Isolation Forest isolates anomalies by partitioning features until an outlier is found. This is hyper-efficient for detecting energy theft where "mismatches" are the primary indicator.
+-   **Hybrid Fallback**: If the model is offline, the system automatically switches to a Ratio-Based calculation (Load vs. Threshold) to ensure 24/7 coverage.
 
 ---
 
-## 📥 Setup & Configuration
+## 📂 Directory Structure
 
-### Backend Setup
-```bash
-cd backend
-pip install -r requirements.txt
-uvicorn main:app --reload
+```text
+/watt_watch/
+├── backend/                       # FASTAPI BACKEND CORE
+│   ├── .env                       # TigerGraph Credentials (TG_HOST, TG_TOKEN, etc.)
+│   ├── main.py                    # Entry Point (REST API Endpoints)
+│   ├── db/
+│   │   └── tigergraph.py          # TigerGraph Connection Config
+│   ├── services/
+│   │   └── tg_service.py          # Hybrid Detection & DB Operations
+│   ├── ml/                        # ML DATA PIPELINE
+│   │   ├── generator.py           # Infrastructure Synthesizer (7,000 poles)
+│   │   ├── bulk_loader.py         # DB Ingestion Script
+│   │   ├── train.py               # ML Model Trainer
+│   │   ├── predict.py             # Inference Engine
+│   │   └── model.pkl              # Trained Binary Model
+│   ├── data/                      # LOCAL DATA REPOSITORY
+│   │   └── grid_data.csv          # Master Infrastructure Snapshot
+│   └── requirements.txt           # Python Dependencies (Pandas, pyTigerGraph, sklearn)
+│
+├── frontend/                      # REACT COMMAND CONSOLE
+│   ├── src/
+│   │   ├── App.jsx                # Global Router (Landing/Login/Main)
+│   │   ├── MainConsole.jsx        # Authenticated UI Layout
+│   │   ├── components/            # UI MODULES
+│   │   │   ├── LandingPage.jsx    # "Sentinel" Public Home
+│   │   │   ├── LoginPage.jsx      # Operator Mock Auth
+│   │   │   ├── DashboardView.jsx  # Real-time Metrics
+│   │   │   ├── GridView.jsx       # Canvas Map (Leaflet)
+│   │   │   ├── AnalyticsView.jsx  # Recharts Intelligence
+│   │   │   └── Sidebar/Header/Panels...
+│   │   └── services/api.js        # Axios/Fetch Integration
+│   └── package.json               # React/Vite Dependencies
+└── README.md                      # Documentation
 ```
-*Port: 8000*
 
-### Frontend Setup
-```bash
-cd frontend
-npm install
-npm run dev
-```
-*Port: 5173*
+---
 
-### Environmental Variables (`.env`)
-To enable automated email alerts, configure the following in your backend root:
-```ini
-ALERT_EMAIL=your-gmail@gmail.com
-ALERT_EMAIL_PASSWORD=your-app-password (16 chars)
-ALERT_RECIPIENT=default-alert-recipient@email.com
-THRESHOLD=0.5
-```
+## 🛠️ Installation & Setup
+
+### 1. Backend Initialization (Python 3.9+)
+1.  Navigate to `/backend`.
+2.  Install requirements: `pip install -r requirements.txt`.
+3.  Configure `.env` with your TigerGraph credentials.
+4.  Optionally reset and regenerate data:
+    -   `python ml/generator.py` (Generate 7k nodes)
+    -   `python ml/bulk_loader.py` (Inject into TigerGraph)
+5.  Start API: `uvicorn main:app --reload`.
+
+### 2. Frontend Initialization (Node 16+)
+1.  Navigate to `/frontend`.
+2.  Install dependencies: `npm install`.
+3.  Start Console: `npm run dev`.
+
+---
+
+## 🌟 Key Features
+-   **Canvas-Only Map**: Smoothly renders 7,000 poles without UI lag using `preferCanvas: true`.
+-   **Real-time Risk Filtering**: Instant dashboard cards that toggle Normal, Medium, and High risk visibility.
+-   **Dynamic Diagnostic**: `/detect` endpoint allows manual re-training and re-inference of the entire grid.
+-   **Premium Aesthetics**: Obsidian dark mode with Cyber-Cyan glassmorphism panels.
+
+---
+**Developed by Antigravity Systems for the IIT Smart Grid Hackathon 2026.**
