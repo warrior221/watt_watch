@@ -6,7 +6,7 @@ const severityMeta = (confidence) => {
   return { label: 'LOW', color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/30', dot: 'bg-yellow-500' };
 };
 
-const AlertsPanel = ({ isOpen, onClose, alerts = [] }) => {
+const AlertsPanel = ({ isOpen, onClose, alerts = [], onLocateNode }) => {
   if (!isOpen) return null;
 
   const high   = alerts.filter(a => a.confidence >= 0.7).length;
@@ -39,7 +39,7 @@ const AlertsPanel = ({ isOpen, onClose, alerts = [] }) => {
         <div className="px-6 py-4 border-b border-slate-800 grid grid-cols-3 gap-3">
           {[
             { label: 'Critical', count: high, color: 'text-red-400', bg: 'bg-red-500/10' },
-            { label: 'Medium', count: medium, color: 'text-orange-400', bg: 'bg-orange-500/10' },
+            { label: 'Medium', count: medium, countStr: medium, color: 'text-orange-400', bg: 'bg-orange-500/10' },
             { label: 'Low', count: low, color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
           ].map(s => (
             <div key={s.label} className={`${s.bg} rounded-xl p-3 text-center`}>
@@ -50,7 +50,7 @@ const AlertsPanel = ({ isOpen, onClose, alerts = [] }) => {
         </div>
 
         {/* Alerts list */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3 custom-scrollbar">
           {alerts.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full opacity-30">
               <span className="material-symbols-outlined text-5xl mb-3">task_alt</span>
@@ -62,11 +62,15 @@ const AlertsPanel = ({ isOpen, onClose, alerts = [] }) => {
               const sev = severityMeta(alert.confidence || 0);
               const timeStr = alert.time ? new Date(alert.time).toLocaleTimeString('en-IN', { timeStyle: 'short' }) : 'Now';
               return (
-                <div key={idx} className={`${sev.bg} border ${sev.border} rounded-2xl p-4 flex items-start gap-4`}>
-                  <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${sev.dot} animate-pulse`} />
+                <div 
+                  key={idx} 
+                  onClick={() => { onLocateNode(alert.id); onClose(); }}
+                  className={`${sev.bg} border ${sev.border} rounded-2xl p-4 flex items-start gap-4 cursor-pointer hover:brightness-125 hover:scale-[1.02] active:scale-95 transition-all group`}
+                >
+                  <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${sev.dot} animate-pulse shadow-[0_0_8px_currentColor]`} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
-                      <p className="text-xs font-black text-white truncate">{alert.id}</p>
+                      <p className="text-xs font-black text-white truncate group-hover:text-blue-400 transition-colors uppercase tracking-wider">{alert.id}</p>
                       <div className="flex items-center gap-2">
                         <span className="text-[9px] text-slate-500 font-bold uppercase">{timeStr}</span>
                         <span className={`text-[9px] font-black uppercase tracking-wider ${sev.color}`}>
@@ -75,23 +79,23 @@ const AlertsPanel = ({ isOpen, onClose, alerts = [] }) => {
                       </div>
                     </div>
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2">
-                      {alert.area || '—'} • {alert.transformer || 'Unknown Transformer'}
+                      {alert.area || '—'} • {alert.transformer || 'Unknown Substation'}
                     </p>
                     <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <p className="text-[9px] text-slate-500 uppercase">Mismatch</p>
-                        <p className="text-xs font-black text-white">{(alert.mismatch || 0).toFixed(2)} kW</p>
+                      <div className="bg-black/20 p-2 rounded-lg border border-white/5">
+                        <p className="text-[8px] text-slate-550 uppercase font-black tracking-widest mb-0.5">Mismatch</p>
+                        <p className="text-xs font-black text-white">{(alert.mismatch || 0).toFixed(2)} <span className="text-[9px] opacity-40">kW</span></p>
                       </div>
-                      <div>
-                        <p className="text-[9px] text-slate-500 uppercase">Confidence</p>
+                      <div className="bg-black/20 p-2 rounded-lg border border-white/5">
+                        <p className="text-[8px] text-slate-550 uppercase font-black tracking-widest mb-0.5">Confidence</p>
                         <p className={`text-xs font-black ${sev.color}`}>{((alert.confidence || 0) * 100).toFixed(0)}%</p>
                       </div>
                     </div>
                     {/* Confidence bar */}
-                    <div className="mt-2 h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                    <div className="mt-3 h-1 w-full bg-white/5 rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all duration-700 ${
-                          alert.confidence >= 0.7 ? 'bg-red-500' : alert.confidence >= 0.4 ? 'bg-orange-400' : 'bg-yellow-400'
+                          alert.confidence >= 0.7 ? 'bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.5)]' : alert.confidence >= 0.4 ? 'bg-orange-400' : 'bg-yellow-400'
                         }`}
                         style={{ width: `${Math.min((alert.confidence || 0) * 100, 100)}%` }}
                       />

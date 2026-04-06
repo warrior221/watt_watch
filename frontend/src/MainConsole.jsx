@@ -132,7 +132,7 @@ const MainConsole = ({ session }) => {
 
       <main className="flex-1 ml-72 mt-16 relative overflow-hidden bg-slate-950">
         <Routes>
-          <Route path="dashboard" element={<DashboardView metrics={metrics} alerts={theftNodes} gridData={{ nodes }} />} />
+          <Route path="dashboard" element={<DashboardView metrics={metrics} alerts={theftNodes} gridData={{ nodes }} onLocateNode={locateNode} />} />
           <Route path="grid" element={<GridView nodes={nodes} theftNodes={theftNodes} currentCity={currentCity} focussedNodeId={focussedNodeId} />} />
           <Route path="analytics" element={<AnalyticsView detectionData={{ theft_nodes: theftNodes, summary: { total_expected_load: nodes.reduce((acc, n) => acc + (n.attributes?.expected_load || 0), 0), total_loss: theftNodes.reduce((acc, n) => acc + n.mismatch, 0), loss_percentage: (theftNodes.reduce((acc, n) => acc + n.mismatch, 0) / nodes.reduce((acc, n) => acc + (n.attributes?.expected_load || 1), 0)) * 100 } }} onLocateNode={locateNode} />} />
           <Route path="history" element={<HistoryView />} />
