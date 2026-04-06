@@ -62,7 +62,7 @@ const SystemHealthView = ({ metrics, detectionData, gridData }) => {
   const nodes = gridData?.nodes || [];
   const poles        = nodes.filter(n => n.type?.toLowerCase() === 'pole').length;
   const transformers = nodes.filter(n => n.type?.toLowerCase() === 'transformer').length;
-  const plants       = nodes.filter(n => n.type?.toLowerCase() === 'powerplant').length;
+  const plants       = nodes.filter(n => n.type?.toLowerCase() === 'Powerplant').length;
 
   const checks = [
     { label: 'API Backend', ok: true,         detail: 'FastAPI running on :8000' },

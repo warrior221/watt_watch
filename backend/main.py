@@ -1,7 +1,7 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 import logging
-from services.tg_service import get_nodes, check_connection, run_detection, update_load_from_csv
+from services.tg_service import get_nodes, get_full_graph_data, get_pole, get_transformer, check_connection, run_detection, update_load_from_csv
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -25,11 +25,28 @@ def test_connection():
 
 @app.get("/nodes")
 def fetch_nodes():
-    # Main grid data retrieval endpoint
+    # Main grid data retrieval endpoint (legacy, keep for backward compatibility)
     data = get_nodes()
     if isinstance(data, dict) and "error" in data:
         return data
     return {"nodes": data}
+
+@app.get("/graph/full")
+def fetch_full_graph():
+    data = get_full_graph_data()
+    if "error" in data:
+        return data
+    return data
+
+@app.get("/graph/pole/{id}")
+def fetch_pole(id: str):
+    data = get_pole(id)
+    return {"node": data}
+
+@app.get("/graph/transformer/{id}")
+def fetch_transformer(id: str):
+    data = get_transformer(id)
+    return {"node": data}
 
 @app.post("/detect")
 def detect_anomalies():

@@ -82,7 +82,7 @@ const MapCanvas = ({ nodes, edges, theftNodes, suspiciousTfs, onInjectTheft, onG
           let size = 10;
           const type = (node.type || "").toLowerCase();
           
-          if (type === 'powerplant' || type === 'power_plant') {
+          if (type === 'Powerplant' || type === 'power_plant') {
             size = 24;
             color = '#a855f7'; // Purple
           } else if (type === 'transformer') {

@@ -5,12 +5,18 @@ export const getNodes = async () => {
     return res.json();
 };
 
-export const triggerDetection = async () => {
+export const getFullGraph = async () => {
+    const res = await fetch(`${BASE_URL}/graph/full`);
+    return res.json();
+};
+
+export const runDetection = async () => {
     const res = await fetch(`${BASE_URL}/detect`, {
         method: "POST"
     });
     return res.json();
 };
+
 
 export const uploadLoadCsv = async (file) => {
     const formData = new FormData();

@@ -10,7 +10,7 @@ import SystemHealthView from './components/SystemHealthView';
 import SupportView from './components/SupportView';
 import AlertsPanel from './components/AlertsPanel';
 import SettingsPanel from './components/SettingsPanel';
-import { getNodes, triggerDetection, uploadLoadCsv } from './services/api';
+import { getFullGraph, runDetection, uploadLoadCsv } from './services/api';
 
 const MainConsole = ({ session }) => {
   const navigate = useNavigate();
@@ -18,17 +18,26 @@ const MainConsole = ({ session }) => {
   const [isAlertsOpen, setAlertsOpen] = useState(false);
   const [isSettingsOpen, setSettingsOpen] = useState(false);
   const [nodes, setNodes] = useState([]);
+  const [Powerplants, setPowerplants] = useState([]);
+  const [transformers, setTransformers] = useState([]);
+  const [edges, setEdges] = useState({ supplies: [], distributes: [] });
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
   const [focussedNodeId, setFocussedNodeId] = useState(null);
 
+
   const fetchData = async () => {
     setLoading(true);
-    setStatusMsg("Syncing SmartGrid nodes...");
+    setStatusMsg("Syncing SmartGrid Hierarchy...");
     try {
-      const data = await getNodes();
-      const nodeList = Array.isArray(data) ? data : (data.nodes || []);
-      setNodes(nodeList);
+      const data = await getFullGraph();
+      if (data.error) throw new Error(data.error);
+      
+      setNodes(data.poles || []);
+      setPowerplants(data.Powerplants || []);
+      setTransformers(data.transformers || []);
+      setEdges({ supplies: data.supplies || [], distributes: data.distributes || [] });
+      
       setStatusMsg("");
     } catch (err) {
       console.error(err);
@@ -46,9 +55,9 @@ const MainConsole = ({ session }) => {
     setLoading(true);
     setStatusMsg("Running Anomaly Detection Engine...");
     try {
-      const res = await triggerDetection();
+      const res = await runDetection();
       if (res.status === "success") {
-        setStatusMsg(`Detection Complete: Processed ${res.count} poles.`);
+        setStatusMsg(`Detection Complete: Processed ${res.poles_analyzed} poles, ${res.tx_analyzed} TX.`);
         await fetchData();
       } else {
         setStatusMsg("Detection failed.");
@@ -82,20 +91,27 @@ const MainConsole = ({ session }) => {
 
   const metrics = useMemo(() => {
     const total_nodes = nodes.length;
-    // Robust attribute mapping for Dashboard & Sidebar
-    const transformers = nodes.filter(n => (n.attributes?.type || n.type || '').toLowerCase().includes('transformer')).length;
     const anomalies = nodes.filter(n => {
         const s = (n.attributes?.status || n.status || '').toLowerCase();
         return s === 'high_anomaly' || s === 'medium_anomaly' || s === 'anomaly';
     });
-    const health = total_nodes > 0 ? Math.max(0, 100 - (anomalies.length / total_nodes * 1000)) : 100;
+    
+    // Check if any plants or transformers are critical
+    const criticalTX = transformers.filter(tx => (tx.attributes?.status || tx.status) === 'anomaly').length;
+    const criticalPP = Powerplants.filter(pp => (pp.attributes?.status || pp.status) === 'critical').length;
+    
+    const health = total_nodes > 0 ? Math.max(0, 100 - (anomalies.length / total_nodes * 1000) - (criticalTX * 5) - (criticalPP * 10)) : 100;
+    
     return {
       total_nodes,
-      transformers,
-      system_health: Math.round(health),
+      transformers: transformers.length,
+      Powerplants: Powerplants.length,
+      criticalTX,
+      criticalPP,
+      system_health: Math.round(Math.max(0, health)),
       anomalies: anomalies.length
     };
-  }, [nodes]);
+  }, [nodes, transformers, Powerplants]);
 
   const theftNodes = useMemo(() => {
     return nodes.filter(n => {
@@ -132,8 +148,8 @@ const MainConsole = ({ session }) => {
 
       <main className="flex-1 ml-72 mt-16 relative overflow-hidden bg-slate-950">
         <Routes>
-          <Route path="dashboard" element={<DashboardView metrics={metrics} alerts={theftNodes} gridData={{ nodes }} onLocateNode={locateNode} />} />
-          <Route path="grid" element={<GridView nodes={nodes} theftNodes={theftNodes} currentCity={currentCity} focussedNodeId={focussedNodeId} />} />
+          <Route path="dashboard" element={<DashboardView metrics={metrics} alerts={theftNodes} gridData={{ nodes, transformers, Powerplants }} onLocateNode={locateNode} />} />
+          <Route path="grid" element={<GridView nodes={nodes} Powerplants={Powerplants} transformers={transformers} edges={edges} theftNodes={theftNodes} currentCity={currentCity} focussedNodeId={focussedNodeId} />} />
           <Route path="analytics" element={<AnalyticsView detectionData={{ theft_nodes: theftNodes, summary: { total_expected_load: nodes.reduce((acc, n) => acc + (n.attributes?.expected_load || 0), 0), total_loss: theftNodes.reduce((acc, n) => acc + n.mismatch, 0), loss_percentage: (theftNodes.reduce((acc, n) => acc + n.mismatch, 0) / nodes.reduce((acc, n) => acc + (n.attributes?.expected_load || 1), 0)) * 100 } }} onLocateNode={locateNode} />} />
           <Route path="history" element={<HistoryView />} />
           <Route path="health" element={<SystemHealthView metrics={metrics} nodes={nodes} />} />

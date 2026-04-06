@@ -1,36 +1,46 @@
-# ⚡ Watt Watch: Smart Grid Anomaly & Theft Detection ⚡
-### *Sentinel Vigil for National Energy Infrastructure*
+# ⚡ Watt Watch: Sentinel Grid Topology & Anomaly Intelligence ⚡
+### *3-Tier Energy Integrity & Distribution Twin*
 
-**Watt Watch** is a production-grade, full-stack investigative platform designed to identify, visualize, and mitigate electricity theft in real-time. By leveraging **TigerGraph's** high-performance graph processing, **FastAPI's** asynchronous concurrency, and **Scikit-learn's** anomaly detection algorithms, Watt Watch provides a "Sentinel" level of oversight for smart energy grids.
+**Watt Watch** is a next-generation "Digital Twin" and investigative platform designed to monitor national energy infrastructure. It transforms a simple pole-based system into a deep **hierarchical energy grid** (Powerplant → Transformer → Pole), leveraging **TigerGraph's** relational engine to detect anomalies and trace supply-chain integrity in real-time.
 
 ---
 
 ## 📌 Project Overview
-Electricity theft accounts for billions in annual revenue loss and grid instability. **Watt Watch** addresses this by mapping 7,000+ infrastructure nodes (Power Plants, Transformers, and Poles) into a relational graph. It uses a hybrid detection engine to compare real-time telemetry against historical baselines, isolating suspicious consumption patterns with geospatial precision.
+Energy grids are complex, branching networks where a failure or theft at the "edge" (Pole) cascades up to the "core" (Powerplant). **Watt Watch** maps these relationships with geospatial precision, allowing operators to visualize the entire supply chain and identify suspicious load patterns using a hybrid heuristic-ML engine.
 
 ---
 
 ## 🚀 Key Features
--   **🔍 Layered Graph Monitoring**: Real-time visibility into the hierarchy of Power Plants → Transformers → Poles.
--   **🤖 Hybrid ML Detection**: Combines `Isolation Forest` (outlier detection) with a heuristic ratio-based engine.
--   **🗺️ GPU-Accelerated Mapping**: Rendered via Leaflet (Canvas), supporting 7,000+ nodes at 60FPS fluid navigation.
--   **📈 Intelligence Dashboard**: Clickable stats cards for instant risk-group filtering (Normal vs. High Risk).
--   **📡 Dynamic Telemetry Sync**: Upload field CSVs to instantly update the entire grid's load state via the API.
--   **🌌 Obsidian UI Palette**: Premium dark-mode interface with Cyber-Cyan glassmorphism panels.
+
+-   **📡 3-Tier Grid Hierarchy**: 
+    -   **Powerplant** (Purple): The core generation hubs.
+    -   **Transformer** (Orange): The distribution nodes.
+    -   **Pole** (Blue/Multicolor): The consumer endpoints.
+-   **🗺️ Interactive Topology Map**: GPU-accelerated rendering of 3,000+ interactive nodes with dynamic connection lines.
+-   **🔍 Hierarchy Path Tracing**: Click any **Pole** to instantly highlight its supply line through a **Transformer** back to the originating **Powerplant**.
+-   **🤖 Tiered Anomaly Detection**:
+    -   **Edge (Pole)**: Ratio-based load analysis (Actual vs. Expected).
+    -   **Distribution (Transformer)**: Aggregates downstream loads to detect transformer over-capacity.
+    -   **Core (Powerplant)**: Monitors total draw to flag grid-level critical status.
+-   **📊 Dashboard Intelligence**: Real-time counters for "System Health" based on hierarchical risk propagation.
+-   **⚡ Sentinel Map Engine**: Zoom-based rendering for connection lines ensures fluid 60FPS navigation even with thousands of edges.
 
 ---
 
-## 🏗️ System Architecture
-The platform operates as a **Four-Tier Sentinel Architecture**:
+## 🏗️ System Architecture (Sentinel Stack)
 
-1.  **Ingestion Layer**: `ml/generator.py` synthesizes 7,000 poles with unique geospatial coordinates and baselines.
-2.  **Graph Layer (TigerGraph)**: Stores the infrastructure as a persistent graph. Relationships enable sub-millisecond traversal from a suspicious pole to its source transformer.
-3.  **Inference Layer (FastAPI + ML)**:
-    -   **Backbone**: FastAPI asynchronously handles telemetry uploads.
-    -   **Brain**: `ml/predict.py` uses a pre-trained `Isolation Forest` model to classify consumption risk.
-4.  **Presentation Layer (React)**:
-    -   **Map Engine**: Leaflet + Canvas for high-density geospatial dots.
-    -   **State Engine**: React hooks manage global filtering and active "focus-on-anomaly" panning.
+1.  **Graph Layer (TigerGraph)**: 
+    -   Utilizes `Powerplant`, `Transformer`, and `Pole` vertex types.
+    -   Relational edges: `SUPPLIES` (Plant → TX) and `DISTRIBUTES` (TX → Pole).
+2.  **Logic Layer (FastAPI)**: 
+    -   **Asynchronous Engine**: Handles high-volume telemetry ingestion.
+    -   **Hierarchy Orchestrator**: Traverses the graph to calculate cascading loads.
+3.  **Data Layer (Python + Pandas)**: 
+    -   `ml/generator.py`: Generates a geographically accurate synthetic grid for any city (Default: Delhi Hub).
+    -   `ml/bulk_loader.py`: High-speed ingestion (Batch Size: 1000) using JWT-based TigerGraph authentication.
+4.  **Presentation Layer (React + Leaflet)**: 
+    -   **Spatial Engine**: Canvas-based rendering for high-density geospatial points.
+    -   **Graph State**: React hooks manage the active supply-chain path highlighting.
 
 ---
 
@@ -38,52 +48,44 @@ The platform operates as a **Four-Tier Sentinel Architecture**:
 
 ```text
 /watt_watch/
-├── backend/                       # FASTAPI CORE
-│   ├── .env                       # TigerGraph & Security Credentials
-│   ├── main.py                    # REST API (Uvicorn Service)
-│   ├── requirements.txt           # Python Dependencies (pyTigerGraph, Pandas, sklearn)
+├── backend/                       # FASTAPI COMMAND CENTER
+│   ├── main.py                    # REST API Entry Point
+│   ├── apply_schema.py            # GSQL Schema Change Infrastructure
+│   ├── clear_grid.py              # Topology Reset Utility
 │   ├── db/
-│   │   └── tigergraph.py          # Persistent Graph Connection Layer
+│   │   └── tigergraph.py          # pyTigerGraph 1.7 Compatibility & Auth Layer
 │   ├── services/
-│   │   └── tg_service.py          # Hybrid Anomaly & Business Logic
-│   ├── ml/                        # ML & DATA PIPELINE
-│   │   ├── generator.py           # Infrastructure Generator (7k Nodes)
-│   │   ├── bulk_loader.py         # DB Ingestion Logic (TG Cloud)
-│   │   ├── train.py               # Model Trainer (Isolation Forest)
-│   │   ├── predict.py             # Model Inference Engine
-│   │   └── model.pkl              # Binary Weights
-│   └── data/                      # LOCAL DATA STORAGE
-│       └── grid_data.csv          # Master Grid Snapshot
+│   │   └── tg_service.py          # Hierarchical Anomaly & Path Logic
+│   ├── ml/                        # DATA PIPELINE
+│   │   ├── generator.py           # Scalable Grid Generator (Plants, TX, Poles)
+│   │   └── bulk_loader.py         # Batch Ingestion Engine
+│   └── data/                      # LOCAL SNAPSHOTS (.csv)
 │
 ├── frontend/                      # REACT CONSOLE
 │   ├── src/
-│   │   ├── App.jsx                # Global Router (Landing/Login/Console)
-│   │   ├── MainConsole.jsx        # Authenticated Grid Orchestrator
-│   │   ├── components/            # UI MODULES
-│   │   │   ├── LandingPage.jsx    # "Sentinel" Public Home
-│   │   │   ├── LoginPage.jsx      # Mock Operator Auth
-│   │   │   ├── GridView.jsx       # GPU Map Module
-│   │   │   ├── DashboardView.jsx  # Metrics & Filtering
-│   │   │   └── AnalyticsView.jsx  # Recharts Intelligence
-│   │   └── services/api.js        # FastAPI Integration (Axios/Fetch)
-│   └── package.json               # Node Modules & Vite Settings
-└── README.md                      # Documentation
+│   │   ├── MainConsole.jsx        # Grid State Orchestrator
+│   │   ├── components/            
+│   │   │   ├── GridView.jsx       # Map Engine (Hierarchy Rendering)
+│   │   │   ├── DashboardView.jsx  # Hierarchical Metrics
+│   │   │   └── AnalyticsView.jsx  # Trend Analysis
+│   │   └── services/api.js        # API Integration
 ```
 
 ---
 
-## ⚙️ How It Works (Step-by-Step Pipeline)
+## 🧠 Anomaly Detection Logic
 
-1.  **Data Generation**: The `ml/generator.py` script identifies 7,000 coordinates across the Delhi Hub and assigns `expected_load` based on demographic density.
-2.  **Storage (TigerGraph)**: The `ml/bulk_loader.py` script performs a bulk upsert (Batch Size: 5,000) into TigerGraph Cloud, ensuring all connections are established.
-3.  **ML Detection Trigger**: When the "Run Detection" icon is clicked on the UI, the backend retrieves all vertices, feeds them into the `predict_anomalies` function, and updates the `status` attribute in the DB.
-4.  **Visualization**: The frontend fetches the updated nodes and uses a custom `getColor` function to determine dot styling on the geospatial map.
+The Sentinel engine applies a **Bottom-Up Propagation Strategy**:
+
+1.  **Pole Level**: If $Actual Load > 1.5 \times Expected Load$, a "High Anomaly" alert is raised at the edge.
+2.  **Transformer Level**: $Current Load = \sum(Connected Poles)$. If $Current Load > Transformer Capacity$, the transformer is flagged as "Anomaly".
+3.  **Powerplant Level**: $Total Draw = \sum(Connected Transformers)$. If $Total Draw > Powerplant Capacity$, a "Critical" status is propagated to the dashboard.
 
 ---
 
-## 🛠️ Installation Guide
+## 🛠️ Setup & Execution
 
-### 1. Setup Backend (Python 3.9+)
+### 1. Backend Preparation
 ```bash
 cd backend
 python -m venv venv
@@ -92,88 +94,23 @@ python -m venv venv
 # Install deps
 pip install -r requirements.txt
 ```
-**Environment Variables (.env):**
-Create a `.env` in `backend/` with:
-```env
-TG_HOST=https://your-graph.i.tgcloud.io
-TG_TOKEN=your-api-token
-TG_GRAPH=watt_watch
-TG_USERNAME=tigergraph
-TG_PASSWORD=your-password
-```
 
-### 2. Setup Frontend (Node 16+)
+### 2. Synchronization (TigerGraph)
 ```bash
-cd frontend
-npm install
+# 1. Update Schema (Add Plants & Transformers)
+python apply_schema.py
+
+# 2. Generate and Load the Grid Topology
+python ml/generator.py
+python ml/bulk_loader.py
 ```
 
----
-
-## 🚀 Running the Project
-
-1.  **Start API (Backend)**: `uvicorn main:app --reload`
-2.  **Start Console (Frontend)**: `npm run dev`
+### 3. Start Services
+-   **Backend**: `uvicorn main:app --reload`
+-   **Frontend**: `npm run dev`
 
 ---
 
-## 📡 API Endpoints
-
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/nodes` | Retrieves all 7,000 active grid poles and their metrics. |
-| `POST` | `/detect` | Triggers the Hybrid ML detection engine across the entire grid. |
-| `POST` | `/upload-load` | Accepts a `.csv` file to sync field telemetry with the DB. |
-| `GET` | `/reset-grid` | Purges the graph and re-initializes 7,000 nodes from scratch. |
-
----
-
-## 🧠 ML Logic Explanation
-
-The system uses a **Hybrid Anomaly Strategy**:
-
-### 1. The Anomaly Ratio (Base Detection)
-The system calculates the consumption mismatch using:
-$$ratio = \frac{actual\_load}{expected\_load}$$
-
--   **Normal**: $ratio \le 1.2$ (Green)
--   **Medium Anomaly**: $1.2 < ratio \le 1.5$ (Yellow)
--   **High Anomaly**: $ratio > 1.5$ (Red)
-
-### 2. Isolation Forest (Pattern Detection)
-The pre-trained model looks for multi-feature outliers. It partitions features like `expected_load`, `load1`, and `area` until it isolates "branches" that deviate significantly from the norm. This captures complex local thefts that a simple ratio might miss.
-
----
-
-## 🗺️ Map Visualization & Color System
-To maintain clarity for operators, the Sentinel Map uses a strict color hierarchy:
--   🔵 **Blue**: Default State (Pre-Detection)
--   🟢 **Green**: Normal Load (Integrity Confirmed)
--   🟡 **Yellow**: Medium Risk (Investigation Recommended)
--   🔴 **Red**: High Anomaly (Immediate Response Required)
-
----
-
-## 📊 Dashboard & Performance
--   **Stats Cards**: Live counters for Total Nodes, System Health (%), and Active Alerts. Click any card to **Filter the Map** instantly (e.g., viewing only Red nodes).
--   **Batch Processing**: Backend handles upserts in batches of 5,000 items to avoid DB timeouts.
--   **Leaflet Clustering**: Automatically groups high-density dots at lower zoom levels, expanding into individual dots as the operator zooms in.
--   **Frontend Filtering**: Uses `useMemo` hooks to filter 7,000 nodes in memory (sub-1ms), providing a zero-latency UI experience.
-
----
-
-## 🔮 Future Improvements
--   **Real-time IoT Streams**: Integration with Zigbee/LoRaWAN smart meters for live streaming.
--   **Time-Series ML**: Using LSTM models to predict seasonal theft trends.
--   **Multi-User Auth**: Full RBAC (Role Based Access Control) for field engineers and management.
-
----
-
-## 📸 Screenshots
-*(Add your high-resolution sentinel screenshots here)*
-
----
-
-## 👤 Author
+## 👤 Author & Development
 **Hridyansh (Sentinel Developer)**
-*Built with ❤️ for the IIT Smart Grid Hackathon 2026.*
+*Built for the Scaler School of Technology (SST) Watt Watch Challenge.*

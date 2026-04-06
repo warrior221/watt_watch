@@ -22,7 +22,7 @@ const SupportView = () => {
     },
     {
       q: 'What CSV format is required?',
-      a: 'Your CSV must have at minimum: id, lat, lng columns. Optional: type (pole/transformer/powerplant), parent_id, expected_load, area. The system will auto-infer types from the id field if type is missing.',
+      a: 'Your CSV must have at minimum: id, lat, lng columns. Optional: type (pole/transformer/Powerplant), parent_id, expected_load, area. The system will auto-infer types from the id field if type is missing.',
     },
   ];
 
